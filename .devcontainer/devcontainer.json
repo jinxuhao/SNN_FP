@@ -1,0 +1,64 @@
+{
+	"name": "bindsnet-docker",
+	"dockerFile": "Dockerfile",
+	"containerUser": "developer",
+//	"workspaceFolder": "/home/fp_jin/FP_workspace/ros_snn_project",
+	"workspaceFolder": "../src",
+	"containerEnv": {
+			"DISPLAY": "${localEnv:DISPLAY}",
+			"QT_X11_NO_MITSHM": "1",
+			"SHELL": "/bin/bash"
+	},
+	"remoteEnv": {
+			"DISPLAY": "${localEnv:DISPLAY}"
+	},
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"terminal.integrated.defaultProfile.linux": "bash",
+				"terminal.integrated.profiles.linux": {
+					"bash": {
+						"path": "/bin/bash"
+					}
+				}
+			},
+			"extensions": [
+				"ms-python.python",
+				"ms-iot.vscode-ros",
+				"ms-azuretools.vscode-docker",
+				"ms-vscode.cmake-tools"
+			]
+		}
+	},
+	"runArgs": [
+			"--runtime=nvidia",
+			"--network=host",
+			"--gpus=all",
+			"--privileged",
+			"--device", "/dev/snd",
+			"-v", "/dev/snd:/dev/snd"
+	],
+	"mounts": [
+		"source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind",
+		"source=/dev/dri,target=/dev/dri,type=bind"
+	],
+	"mounts": [
+			{
+					"source": "/dev/dri",
+					"target": "/dev/dri",
+					"type": "bind"
+			}
+		]
+
+	// 		{
+	// 				"source": "/tmp/.X11-unix",
+	// 				"target": "/tmp/.X11-unix",
+	// 				"type": "bind"
+	// 		},
+	// 		{
+	// 				"source": "/etc/machine-id",
+	// 				"target": "/etc/machine-id",
+	// 				"type": "bind"
+	// 		}
+	
+}

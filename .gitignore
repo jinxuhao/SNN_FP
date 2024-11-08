@@ -5,5 +5,5 @@ logs/
 .catkin_tools/
 
 # VS Code DevContainer 
-.devcontainer/
+.vscode/
 
