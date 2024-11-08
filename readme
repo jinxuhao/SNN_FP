@@ -1,0 +1,10 @@
+在本地 拉取这个特定的 CUDA 镜像：
+
+docker pull nvidia/cuda:11.8.0-devel-ubuntu20.04
+
+行以下命令验证镜像是否正确配置：
+
+docker run --gpus all nvidia/cuda:11.8.0-base-ubuntu20.04 nvidia-smi
+
+
+pip3 install numpy==1.24.3 scipy==1.10.1

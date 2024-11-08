@@ -1,0 +1,9 @@
+# ROS 
+build/
+devel/
+logs/
+.catkin_tools/
+
+# VS Code DevContainer 
+.devcontainer/
+
