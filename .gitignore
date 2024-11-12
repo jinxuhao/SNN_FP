@@ -7,3 +7,4 @@ logs/
 # VS Code DevContainer 
 .vscode/
 
+src/bindsnet/

@@ -2,8 +2,10 @@
 	"name": "bindsnet-docker",
 	"dockerFile": "Dockerfile",
 	"containerUser": "developer",
-//	"workspaceFolder": "/home/fp_jin/FP_workspace/ros_snn_project",
-	"workspaceFolder": "../src",
+	"workspaceFolder": "/workspace",
+	"workspaceMount": "source=/home/fp_jin/FP_workspace/ros_snn_project,target=/workspace,type=bind",
+	"context": "/home/fp_jin/FP_workspace/ros_snn_project",
+//	"workspaceFolder": "../src",
 	"containerEnv": {
 			"DISPLAY": "${localEnv:DISPLAY}",
 			"QT_X11_NO_MITSHM": "1",
@@ -48,7 +50,7 @@
 					"target": "/dev/dri",
 					"type": "bind"
 			}
-		]
+		],
 
 	// 		{
 	// 				"source": "/tmp/.X11-unix",
@@ -60,5 +62,7 @@
 	// 				"target": "/etc/machine-id",
 	// 				"type": "bind"
 	// 		}
-	
+	//"postCreateCommand": "pip uninstall -y numpy && pip install 'numpy<2.0' && pip install -r /workspace/requirements.txt"
+	"postCreateCommand": "pip install 'numpy<2.0' && pip install -r /workspace/requirements.txt"
+
 }

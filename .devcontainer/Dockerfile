@@ -2,7 +2,7 @@
 
 FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04 as base
 
-LABEL MAINTAINER="yueyang.zhang@tum.de"
+LABEL MAINTAINER="ge38feh@tum.de"
 
 SHELL [ "/bin/bash", "-c" ]
 
@@ -55,6 +55,9 @@ RUN apt-get install ca-cacert \
   && update-ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
+# 在这里卸载系统安装的 netifaces，并使用 pip 安装最新版
+# RUN apt-get remove -y python3-netifaces 
+RUN python3 -m pip install --upgrade --user netifaces
 
 ##### ROS Stage #####
 
@@ -66,6 +69,8 @@ RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt
 RUN apt-get update
 RUN apt-get install -y ros-noetic-desktop-full
 RUN echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
+RUN source ~/.bashrc
+RUN echo 'export PYTHONPATH=$PYTHONPATH:/usr/lib/python3/dist-packages' >> ~/.bashrc
 RUN source ~/.bashrc
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
@@ -131,10 +136,10 @@ RUN sudo mkdir -p /home/$USERNAME/Downloads/openssl/ssl \
 
 FROM runtime as dep
 
-RUN sudo sh -c 'echo "deb [arch=amd64] https://hsr-user:jD3k4G2e@packages.hsr.io/ros/ubuntu `lsb_release -cs` main" > /etc/apt/sources.list.d/tmc.list'
-RUN sudo sh -c 'echo "deb [arch=amd64] https://hsr-user:jD3k4G2e@packages.hsr.io/tmc/ubuntu `lsb_release -cs` multiverse main" >> /etc/apt/sources.list.d/tmc.list'
+# RUN sudo sh -c 'echo "deb [arch=amd64] https://hsr-user:jD3k4G2e@packages.hsr.io/ros/ubuntu `lsb_release -cs` main" > /etc/apt/sources.list.d/tmc.list'
+# RUN sudo sh -c 'echo "deb [arch=amd64] https://hsr-user:jD3k4G2e@packages.hsr.io/tmc/ubuntu `lsb_release -cs` multiverse main" >> /etc/apt/sources.list.d/tmc.list'
 RUN sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list' 
-RUN wget https://hsr-user:jD3k4G2e@packages.hsr.io/tmc.key -O - | sudo apt-key add - 
+# RUN wget https://hsr-user:jD3k4G2e@packages.hsr.io/tmc.key -O - | sudo apt-key add - 
 RUN wget https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc -O - | sudo apt-key add - 
 RUN wget https://packages.osrfoundation.org/gazebo.key -O - | sudo apt-key add - 
 RUN sudo sh -c 'mkdir -p /etc/apt/auth.conf.d' 
@@ -142,19 +147,19 @@ RUN sudo sh -c '/bin/echo -e "machine packages.hsr.io\nlogin hsr-user\npassword 
 RUN sudo sh -c '/bin/echo -e "Package: ros-noetic-laser-ortho-projector\nPin: version 0.3.3*\nPin-Priority: 1001\n\nPackage: ros-noetic-laser-scan-matcher\nPin: version 0.3.3*\nPin-Priority: 1001\n\nPackage: ros-noetic-laser-scan-sparsifier\nPin: version 0.3.3*\nPin-Priority: 1001\n\nPackage: ros-noetic-laser-scan-splitter\nPin: version 0.3.3*\nPin-Priority: 1001\n\nPackage: ros-noetic-ncd-parser\nPin: version 0.3.3*\nPin-Priority: 1001\n\nPackage: ros-noetic-polar-scan-matcher\nPin: version 0.3.3*\nPin-Priority: 1001\n\nPackage: ros-noetic-scan-to-cloud-converter\nPin: version 0.3.3*\nPin-Priority: 1001\n\nPackage: ros-noetic-scan-tools\nPin: version 0.3.3*\nPin-Priority: 1001" > /etc/apt/preferences' 
 
 RUN sudo apt-get update
-RUN sudo apt-get install ros-noetic-tmc-desktop-full -q -y --no-install-recommends
+RUN sudo apt-get install ros-noetic-desktop-full -q -y --no-install-recommends
 
 RUN echo -e "\nexport LOCALHOST_IP=\$(hostname -I | awk '{print \$1}')\necho \"Localhost IP: \$LOCALHOST_IP\"\n\nexport ROS_IP=\$LOCALHOST_IP" >> ~/.bashrc
 
 
 RUN echo 'export ROS_HOME=~/.ros' >> ~/.bashrc
-RUN echo 'alias sim_mode='\''export ROS_MASTER_URI=http://localhost:11311 export PS1="\[\033[44;1;37m\]<local>\[\033[0m\]\w$ "'\''' >> ~/.bashrc
-RUN echo 'alias hsrb_mode='\''export ROS_MASTER_URI=http://10.152.246.155:11311 export PS1="\[\033[41;1;37m\]<hsrb>\[\033[0m\]\w$ "'\''' >> ~/.bashrc
-RUN echo "alias normal_mode='source ~/.bashrc'" >> ~/.bashrc
+# RUN echo 'alias sim_mode='\''export ROS_MASTER_URI=http://localhost:11311 export PS1="\[\033[44;1;37m\]<local>\[\033[0m\]\w$ "'\''' >> ~/.bashrc
+# RUN echo 'alias hsrb_mode='\''export ROS_MASTER_URI=http://10.152.246.155:11311 export PS1="\[\033[41;1;37m\]<hsrb>\[\033[0m\]\w$ "'\''' >> ~/.bashrc
+# RUN echo "alias normal_mode='source ~/.bashrc'" >> ~/.bashrc
 
 RUN source home/$USERNAME/.bashrc
 
-RUN echo 'source /workspaces/adv_robocup/hsrb_ws/devel/setup.bash' >> ~/.bashrc
+# RUN echo 'source /workspaces/adv_robocup/hsrb_ws/devel/setup.bash' >> ~/.bashrc
 RUN echo "alias sss='source devel/setup.bash'" >> ~/.bashrc
 RUN sudo apt install -qqy lsof \
   net-tools\
@@ -163,10 +168,18 @@ RUN sudo apt install -qqy lsof \
   python-is-python3
 
 
+# # 将本地的 requirements.txt 文件复制到 Docker 镜像中
+# COPY requirements.txt /tmp/requirements.txt
+
+# # 安装 requirements.txt 中列出的所有 Python 依赖包
+# RUN pip3 install --upgrade pip && \
+#     pip3 install -r /tmp/requirements.txt
+
 # TODO: pytorch, segment_anything, etc.
 
 RUN sudo apt install -qqy ros-noetic-moveit
-RUN pip3 install --upgrade pip numpy==1.24.3 scipy==1.10.1 protobuf
+RUN pip3 install --upgrade pip && \
+    pip3 install "numpy<2.0" scipy==1.10.1 protobuf networkx==3.1
 RUN pip install networkx==3.1
 RUN pip install torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1 --index-url https://download.pytorch.org/whl/cu118
 RUN pip install git+https://github.com/facebookresearch/segment-anything.git
@@ -176,6 +189,7 @@ RUN pip install ftfy regex tqdm
 RUN pip install git+https://github.com/openai/CLIP.git
 
 # RUN pip install -r /workspaces/adv_robocup/hsrb_ws/src/ultralytics_ros/requirements.txt
+# RUN pip install -r /workspaces/requirements.txt
 RUN pip install opencv-python smash
 
 WORKDIR /workspaces/ros/ros_snn_project/src
