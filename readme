@@ -12,3 +12,17 @@ pip3 install numpy==1.24.3 scipy==1.10.1
 
 使用两遍
 pip install "numpy<2.0"
+
+
+netifaces报错
+python3 -m pip install netifaces --upgrade --user
+sudo apt install ros-noetic-desktop-full
+
+
+bug:
+Traceback (most recent call last):
+    File "/workspace/src/snn_pid_controller/scripts/snn_P_layer_2.py", line 8, in <module>
+      from bindsnet.network.nodes import Neurons
+  ImportError: cannot import name 'Neurons' from 'bindsnet.network.nodes' (/home/developer/.local/lib/python3.9/site-packages/bindsnet/network/nodes.py)
+
+  在较新的 BindsNET 版本中，Neurons 类可能已经更改或被替换。我们可以改用 LIFNodes（LIF 表示泄漏积分-发放神经元），这在 BindsNET 中通常用作神经元层的实现
