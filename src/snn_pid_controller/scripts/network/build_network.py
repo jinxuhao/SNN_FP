@@ -20,14 +20,31 @@ def create_2D_operation_array(input_1, input_2, operation="add"):
                     operation_array[i, j] = 1  # 反对角线为减法连接
     return operation_array
 
-# 使用 2D 操作数组实现加法/减法运算
+# # 使用 2D 操作数组实现加法/减法运算
+# def perform_operation(input_1_value, input_2_value, operation="add", num_neurons=63):
+#     input_1_idx = encode_1D(input_1_value, -1, 1, num_neurons)
+#     input_2_idx = encode_1D(input_2_value, -1, 1, num_neurons)
+
+#     operation_array = create_2D_operation_array(range(num_neurons), range(num_neurons), operation)
+#     result_index = np.argmax(operation_array[input_1_idx, :])  # 获取结果的索引
+#     return result_index - (num_neurons // 2)  # 结果居中处理
 def perform_operation(input_1_value, input_2_value, operation="add", num_neurons=63):
+    # 将输入值编码为对应的神经元索引
     input_1_idx = encode_1D(input_1_value, -1, 1, num_neurons)
     input_2_idx = encode_1D(input_2_value, -1, 1, num_neurons)
-
-    operation_array = create_2D_operation_array(range(num_neurons), range(num_neurons), operation)
-    result_index = np.argmax(operation_array[input_1_idx, :])  # 获取结果的索引
-    return result_index - (num_neurons // 2)  # 结果居中处理
+    
+    # 根据操作选择加法或减法
+    if operation == "add":
+        result_index = input_1_idx + input_2_idx
+    elif operation == "subtract":
+        result_index = input_1_idx - input_2_idx
+    else:
+        raise ValueError("Unsupported operation. Use 'add' or 'subtract'.")
+    
+    # 确保结果索引在 [0, num_neurons - 1] 范围内
+    result_index = max(0, min(result_index, num_neurons - 1))
+    
+    return result_index
 
 # 示例使用
 angular_velocity = 0.5  # 示例输入值
