@@ -19,6 +19,16 @@ python3 -m pip install netifaces --upgrade --user
 sudo apt install ros-noetic-desktop-full
 
 
+bug：
+Step 0: Input data shape: torch.Size([1, 1, 63])
+Layer input received input with shape torch.Size([1, 63])
+Traceback (most recent call last):
+  File "/workspace/src/snn_pid_controller/scripts/main.py", line 49, in <module>
+    network.run(inputs={'input': input_data}, time=1)
+  File "/home/developer/.local/lib/python3.9/site-packages/bindsnet/network/network.py", line 405, in run
+    self.layers[l].forward(x=current_inputs[l])
+TypeError: forward() got an unexpected keyword argument 'x'
+
 bug:
 Traceback (most recent call last):
     File "/workspace/src/snn_pid_controller/scripts/snn_P_layer_2.py", line 8, in <module>

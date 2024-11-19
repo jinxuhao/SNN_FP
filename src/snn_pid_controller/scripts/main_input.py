@@ -6,9 +6,9 @@ import torch
 from bindsnet.network import Network
 from bindsnet.network.topology import Connection
 from bindsnet.network.monitors import Monitor
-# from bindsnet.network.nodes import Input 
+from bindsnet.network.nodes import Input 
 
-# from layers.input import SNNInput
+from layers.input import SNNInput
 from layers.input_layer import InputLayer
 from layers.encoding_layer import EncodingLayer
 from layers.integration_layer import IntegrationLayer
@@ -19,9 +19,9 @@ network = Network()
 
 # 初始化各层
 num_neurons = 63
-# snn_input = SNNInput(num_neurons=num_neurons)
-# input_layer = Input(num_neurons) 
-input_layer = InputLayer(num_neurons=num_neurons)
+snn_input = SNNInput(num_neurons=num_neurons)
+input_layer = Input(num_neurons) 
+# input_layer = InputLayer(num_neurons=num_neurons)
 encoding_layer = EncodingLayer(num_neurons=num_neurons)
 integration_layer = IntegrationLayer(num_neurons=num_neurons)
 output_layer = ComplexOutputLayer(num_neurons=num_neurons)
@@ -34,8 +34,8 @@ network.add_layer(integration_layer, name='integration')
 network.add_layer(output_layer, name='output')
 
 # 设置层之间的连接
-# input_to_encoding = Connection(source=network.layers['input'], target=encoding_layer)
-input_to_encoding = Connection(source=input_layer, target=encoding_layer)
+input_to_encoding = Connection(source=network.layers['input'], target=encoding_layer)
+# input_to_encoding = Connection(source=input_layer, target=encoding_layer)
 encoding_to_integration = Connection(source=encoding_layer, target=integration_layer)
 integration_to_output = Connection(source=integration_layer, target=output_layer)
 
@@ -76,19 +76,15 @@ network.add_monitor(monitor, name='input_monitor')
 # print("Shape of source.s in input_to_encoding:", input_layer.s.shape)
 # 生成随机输入数据（确保为张量，而不是嵌套字典）
 # Prepare inputs without using 'x' in forward()
-current_angle, target_angle = input_layer.generate_virtual_input()
-print("current_angle:", current_angle)
-print("target_angle:", target_angle)
+# current_angle, target_angle = input_layer.generate_virtual_input()
+# input_layer.update_input(current_angle, target_angle)
 
-
-input_layer.update_input(current_angle, target_angle)
-
-input_data = input_layer.forward()
-input_data = input_data.view(1, -1)  # 将 input_data 调整为 (1, 63)
+# input_data = input_layer.forward()
+# input_data = input_data.view(1, -1)  # 将 input_data 调整为 (1, 63)
 
 # # 确保 input_data 的形状符合预期
 # print(f"Input data shape for network: {input_data.shape}")
-# input_data = snn_input.generate_spike_input()
+input_data = snn_input.generate_spike_input()
 
 # Simulate network
 print("Input data shape for network:", input_data.shape)
