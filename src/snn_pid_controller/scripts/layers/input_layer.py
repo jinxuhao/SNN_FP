@@ -3,7 +3,7 @@ import numpy as np
 from bindsnet.network.nodes import Nodes
 
 class InputLayer(Nodes):
-    def __init__(self, num_neurons, angle_range=(-40, 40), setpoint_range=(-25, 25), angular_velocity_range=(-80, 80)):
+    def __init__(self, num_neurons, angle_range=(-40, 40), setpoint_range=(-40, 40), angular_velocity_range=(-80, 80)):
         super(InputLayer, self).__init__(n=num_neurons, shape=(1, num_neurons))
         self.num_neurons = num_neurons
         self.angle_range = angle_range
@@ -21,13 +21,27 @@ class InputLayer(Nodes):
         self.s = torch.zeros(1, self.num_neurons)  # 确保是 (1, num_neurons)
         self.s[0, current_idx] = 1
         self.s[0, target_idx] = 1
-        print("Updated input layer s shape:", self.s.shape)  # Debug print
-        print(f"current_angle: {current_angle}, mapped index: {current_idx}")
-        print(f"target_angle: {target_angle}, mapped index: {target_idx}")
+        # self.s = (self.s > 0).bool()
+        print("INPUT____Updated input layer s shape:", self.s.shape)  # Debug print
+        print(f"INPUT____current_angle: {current_angle}, mapped index: {current_idx}")
+        print(f"INPUT____target_angle: {target_angle}, mapped index: {target_idx}")
 
-    def forward(self , x=None ,input_1_value=None, input_2_value=None, *args, **kwargs):
+    def forward(self, x, input_1_value=None, input_2_value=None, *args, **kwargs):
 
-        return self.s  # 或者在需要的地方使用 self.s 更新
+        # # Generate virtual input
+        # current_angle, target_angle = self.generate_virtual_input()
+        # print(f"DEBUG___X{x}")
+        
+        # # # Update the state
+        # self.update_input(current_angle, target_angle)
+        # self.s.view(self.s.size(0), -1)
+        # # print(f"DEBUG___Updated state self.s: {self.s}")
+        # print("INPUT___input_layer.forward() called",self.s)
+        # self.s = (self.s > 0).bool()
+        # print(f"INPUT___Shape of s (source spikes): {self.s.shape}, Data type: {self.s.dtype}")
+        # print(f"DEBUG___Converted self.s to bool: {self.s}")
+        return self.s
+
 
 
     def generate_virtual_input(self):

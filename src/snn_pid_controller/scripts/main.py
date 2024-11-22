@@ -14,6 +14,9 @@ from layers.encoding_layer import EncodingLayer
 from layers.integration_layer import IntegrationLayer
 from layers.output_layer import ComplexOutputLayer
 
+from connections.identity_connection import IdentityConnection
+
+
 # 创建 SNN 网络实例
 network = Network()
 
@@ -35,18 +38,41 @@ network.add_layer(output_layer, name='output')
 
 # 设置层之间的连接
 # input_to_encoding = Connection(source=network.layers['input'], target=encoding_layer)
-input_to_encoding = Connection(source=input_layer, target=encoding_layer)
-encoding_to_integration = Connection(source=encoding_layer, target=integration_layer)
-integration_to_output = Connection(source=integration_layer, target=output_layer)
+# input_to_encoding = Connection(source=input_layer, target=encoding_layer)
+identity_weights_input_to_encoding = torch.eye(encoding_layer.n, input_layer.n)
+identity_weights_encoding_to_integration = torch.eye(integration_layer.n, encoding_layer.n)
+identity_weights_integration_to_output = torch.eye(output_layer.n, integration_layer.n)
+
+
+input_to_encoding = Connection(source=input_layer, target=encoding_layer, w=identity_weights_input_to_encoding, 
+    requires_grad=False)
+# input_to_encoding = IdentityConnection(source=input_layer, target=encoding_layer)
+encoding_to_integration = Connection(source=encoding_layer, target=integration_layer,w=identity_weights_encoding_to_integration, 
+    requires_grad=False)
+# integration_to_output = Connection(source=integration_layer, target=output_layer,w = identity_weights_integration_to_output, 
+    # requires_grad=False)
+
 
 network.add_connection(input_to_encoding, source='input', target='encoding')
 network.add_connection(encoding_to_integration, source='encoding', target='integration')
-network.add_connection(integration_to_output, source='integration', target='output')
+# network.add_connection(integration_to_output, source='integration', target='output')
+# print(f"Connections in network: {network.connections}")
+
+
+# print(f"Connection weights shape: {input_to_encoding.w.shape}")
+
+# print(f"Input to EncodingLayer shape: {input_layer.s.shape}")
 
 
 # 创建 Monitor 以观察网络的行为
 monitor = Monitor(network.layers['input'], state_vars=['s'], time=100)
 network.add_monitor(monitor, name='input_monitor')
+layers_to_monitor = {'input': input_layer, 'encoding': encoding_layer, 'integration': integration_layer}
+monitors = {}
+
+for name, layer in layers_to_monitor.items():
+    monitors[name] = Monitor(layer, state_vars=['s'], time=100)
+    network.add_monitor(monitors[name], name=f'{name}_monitor')
 
 
 # # 生成初始输入数据
@@ -76,43 +102,74 @@ network.add_monitor(monitor, name='input_monitor')
 # print("Shape of source.s in input_to_encoding:", input_layer.s.shape)
 # 生成随机输入数据（确保为张量，而不是嵌套字典）
 # Prepare inputs without using 'x' in forward()
+
+# current_angle, target_angle = input_layer.generate_virtual_input()
+# print("current_angle:", current_angle)
+# print("target_angle:", target_angle)
+
+
+# input_layer.update_input(current_angle, target_angle)
+
+# input_data = input_layer.forward()
+# print(f"CHECK___Input data before passing to network: {input_data.shape}")
+# input_data = input_data.view(1, -1)  # 将 input_data 调整为 (1, 63)
 current_angle, target_angle = input_layer.generate_virtual_input()
-print("current_angle:", current_angle)
-print("target_angle:", target_angle)
-
-
 input_layer.update_input(current_angle, target_angle)
+input_data = input_layer.s.clone() # 获取当前的状态变量
 
-input_data = input_layer.forward()
-input_data = input_data.view(1, -1)  # 将 input_data 调整为 (1, 63)
 
 # # 确保 input_data 的形状符合预期
 # print(f"Input data shape for network: {input_data.shape}")
 # input_data = snn_input.generate_spike_input()
 
+# 运行编码层
+# encoding_output = encoding_layer.forward(input_data)
+# print(f"Main___Encoding layer output: {encoding_output}")
+
 # Simulate network
-print("Input data shape for network:", input_data.shape)
+print(f"RUN___Input data shape for network:{input_data.shape},Data type: {input_data.dtype}")
 # 运行网络
 try:
     # Simulate network
-    network.run(inputs={'input': input_data}, time=1)
+    print("Before network.run()")
+    print(f"Input data shape for network: {input_data.shape}")
+    # print(f"Input data shape for network: {input_data}")
+    input_data = input_data.repeat(2, 1)  # 重复两次，变成 [2, neurons]
+
+    network.run(inputs={'input': input_data}, time=2)
+    # print(f"AFTER___Input data shape for network: {input_layer.s},Data type: {input_layer.s.dtype}")
+    # # print(f"each Encoding layer state: {encoding_layer.s}")
+    # print(f"Layer encoding received input with shape {encoding_layer.s.shape},Data type: {encoding_layer.s.dtype}")
+    
+
 except RuntimeError as e:
     print("RuntimeError encountered:", e)
 
+
+
 # 在运行网络仿真之后，检查并获取 Monitor 的尖峰数据
-try:
-    # 过滤掉空列表，只保留非空张量
-    recorded_spikes = [item for item in monitor.recording['s'] if isinstance(item, torch.Tensor) and item.numel() > 0]
+# try:
+#     # 过滤掉空列表，只保留非空张量
+#     recorded_spikes = [item for item in monitor.recording['s'] if isinstance(item, torch.Tensor) and item.numel() > 0]
     
+#     if recorded_spikes:
+#         spikes = torch.cat(recorded_spikes, dim=0)
+#         print("Spiking activity in input layer:")
+#         print(spikes)
+#     else:
+#         print("No spiking activity recorded in input layer.")
+# except TypeError as e:
+#     print("TypeError encountered while processing spikes:", e)
+
+
+for name, monitor in monitors.items():
+    recorded_spikes = [item for item in monitor.recording['s'] if isinstance(item, torch.Tensor) and item.numel() > 0]
     if recorded_spikes:
         spikes = torch.cat(recorded_spikes, dim=0)
-        print("Spiking activity in input layer:")
+        print(f"Spiking activity in {name} layer:")
         print(spikes)
     else:
-        print("No spiking activity recorded in input layer.")
-except TypeError as e:
-    print("TypeError encountered while processing spikes:", e)
-
+        print(f"No spiking activity recorded in {name} layer.")
 # # 仿真步数
 # num_steps = 100
 
