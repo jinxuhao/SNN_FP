@@ -159,11 +159,11 @@ class IntegrationLayer(Nodes):
 
         print(f"Integration___Updated I state: {self.I}")
 
-        # 更新 self.s，确保与 BindsNET 兼容
-        self.s = self.I.clone()
 
         # 获取 I 层当前激活神经元索引
         I_active_index = torch.argmax(self.I).item()
         print(f"Integration___Active index in I: {I_active_index}")
 
+        # 更新 self.s，确保与 BindsNET 兼容
+        self.s = self.I.clone()
         return self.s

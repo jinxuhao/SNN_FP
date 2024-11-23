@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import torch
 from bindsnet.network import Network
-from bindsnet.network.topology import Connection
+from bindsnet.network.topology import Connection,MulticompartmentConnection
 from bindsnet.network.monitors import Monitor
 # from bindsnet.network.nodes import Input 
 
@@ -13,6 +13,9 @@ from layers.input_layer import InputLayer
 from layers.encoding_layer import EncodingLayer
 from layers.integration_layer import IntegrationLayer
 from layers.output_layer import ComplexOutputLayer
+from layers.P_layer import PIntermediateLayer
+from layers.I_layer import IIntermediateLayer
+from layers.D_layer import DIntermediateLayer
 
 from connections.identity_connection import IdentityConnection
 
@@ -29,12 +32,20 @@ encoding_layer = EncodingLayer(num_neurons=num_neurons)
 integration_layer = IntegrationLayer(num_neurons=num_neurons)
 output_layer = ComplexOutputLayer(num_neurons=num_neurons)
 
+
+P_layer = PIntermediateLayer(num_neurons=num_neurons)
+I_layer = IIntermediateLayer(num_neurons=num_neurons)
+D_layer = DIntermediateLayer(num_neurons=num_neurons)
+
 # 将各层添加到网络中
 network.add_layer(input_layer, name='input')
 # network.add_layer(input_layer, name='input')
 network.add_layer(encoding_layer, name='encoding')
 network.add_layer(integration_layer, name='integration')
 network.add_layer(output_layer, name='output')
+network.add_layer(P_layer, name='p_intermediate')
+network.add_layer(I_layer, name='i_intermediate')
+network.add_layer(D_layer, name='d_intermediate')
 
 # 设置层之间的连接
 # input_to_encoding = Connection(source=network.layers['input'], target=encoding_layer)
@@ -42,21 +53,69 @@ network.add_layer(output_layer, name='output')
 identity_weights_input_to_encoding = torch.eye(encoding_layer.n, input_layer.n)
 identity_weights_encoding_to_integration = torch.eye(integration_layer.n, encoding_layer.n)
 identity_weights_integration_to_output = torch.eye(output_layer.n, integration_layer.n)
+identity_weights_encoding_to_output = torch.eye(output_layer.n, encoding_layer.n)
 
+identity_weights_p_to_output = torch.eye(output_layer.n, P_layer.n)
+identity_weights_i_to_output = torch.eye(output_layer.n, I_layer.n)
+identity_weights_d_to_output = torch.eye(output_layer.n, D_layer.n)
 
 input_to_encoding = Connection(source=input_layer, target=encoding_layer, w=identity_weights_input_to_encoding, 
     requires_grad=False)
 # input_to_encoding = IdentityConnection(source=input_layer, target=encoding_layer)
 encoding_to_integration = Connection(source=encoding_layer, target=integration_layer,w=identity_weights_encoding_to_integration, 
     requires_grad=False)
+encoding_to_p = Connection(source=encoding_layer, target=P_layer, w=torch.eye(P_layer.n, encoding_layer.n), 
+    requires_grad=False)
+integration_to_i = Connection(source=integration_layer, target=I_layer, w=torch.eye(I_layer.n, integration_layer.n), 
+    requires_grad=False)
+encoding_to_d = Connection(
+    source=encoding_layer, 
+    target=D_layer, 
+    w=torch.eye(D_layer.n, integration_layer.n), 
+    requires_grad=False)
+# p_to_output = Connection(
+#     source=P_layer, 
+#     target=output_layer, 
+#     w=identity_weights_p_to_output, 
+#     requires_grad=False)
+# i_to_output = Connection(
+#     source=I_layer, 
+#     target=output_layer, 
+#     w=identity_weights_i_to_output, 
+#     requires_grad=False)
+# d_to_output = Connection(
+#     source=D_layer, 
+#     target=output_layer, 
+#     w=identity_weights_d_to_output, 
+#     requires_grad=False)
 # integration_to_output = Connection(source=integration_layer, target=output_layer,w = identity_weights_integration_to_output, 
-    # requires_grad=False)
+#     requires_grad=False)
+# encoding_to_output = Connection(source=encoding_layer, target=output_layer,w = identity_weights_encoding_to_output, 
+#     requires_grad=False)
+
+
+
+# multi_conn = MulticompartmentConnection(
+#     source=["encoding", "integration"],  # 来源层
+#     target= "output",                          # 目标层
+#     device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),                                # 运行设备
+#     weights=[0.5, 0.5],                            # 各来源层的权重
+#     w=[identity_weights_encoding_to_output, identity_weights_integration_to_output]
+# )
+
 
 
 network.add_connection(input_to_encoding, source='input', target='encoding')
 network.add_connection(encoding_to_integration, source='encoding', target='integration')
 # network.add_connection(integration_to_output, source='integration', target='output')
-# print(f"Connections in network: {network.connections}")
+network.add_connection(encoding_to_p, source='encoding', target='p_intermediate')
+network.add_connection(integration_to_i, source='integration', target='i_intermediate')
+network.add_connection(encoding_to_d, source='encoding', target='d_intermediate')
+# network.add_connection(p_to_output, source='p_intermediate', target='output')
+# network.add_connection(i_to_output, source='i_intermediate', target='output')
+# network.add_connection(d_to_output, source='d_intermediate', target='output')
+
+print(f"Connections in network: {network.connections}")
 
 
 # print(f"Connection weights shape: {input_to_encoding.w.shape}")
@@ -67,7 +126,15 @@ network.add_connection(encoding_to_integration, source='encoding', target='integ
 # 创建 Monitor 以观察网络的行为
 monitor = Monitor(network.layers['input'], state_vars=['s'], time=100)
 network.add_monitor(monitor, name='input_monitor')
-layers_to_monitor = {'input': input_layer, 'encoding': encoding_layer, 'integration': integration_layer}
+layers_to_monitor = {
+    'input': input_layer,
+    'encoding': encoding_layer,
+    'integration': integration_layer,
+    'p_intermediate': P_layer,
+    'i_intermediate': I_layer,
+    'd_intermediate': D_layer
+    # 'output': output_layer
+}
 monitors = {}
 
 for name, layer in layers_to_monitor.items():
@@ -134,9 +201,9 @@ try:
     print("Before network.run()")
     print(f"Input data shape for network: {input_data.shape}")
     # print(f"Input data shape for network: {input_data}")
-    input_data = input_data.repeat(2, 1)  # 重复两次，变成 [2, neurons]
+    input_data = input_data.repeat(4, 1)  # 重复两次，变成 [2, neurons]
 
-    network.run(inputs={'input': input_data}, time=2)
+    network.run(inputs={'input': input_data}, time=4)
     # print(f"AFTER___Input data shape for network: {input_layer.s},Data type: {input_layer.s.dtype}")
     # # print(f"each Encoding layer state: {encoding_layer.s}")
     # print(f"Layer encoding received input with shape {encoding_layer.s.shape},Data type: {encoding_layer.s.dtype}")
