@@ -10,22 +10,37 @@ class InputLayer(Nodes):
         self.setpoint_range = setpoint_range
         self.s = torch.zeros(1, self.num_neurons)  # 初始化 s 为 (1, num_neurons)
 
+        # 标志和显式输入索引
+        self.use_explicit_inputs = False
+        self.explicit_current = None
+        self.explicit_target = None
+
+
+        self.last_indices = (None, None)  # 用于存储 current_idx 和 target_idx
+
+
     def encode_index(self, value, min_val, max_val):
         """根据输入范围和神经元数量进行索引编码"""
         idx = int((value - min_val) / (max_val - min_val) * (self.num_neurons - 1))
         return max(0, min(idx, self.num_neurons - 1))
 
-    def update_input(self, current_angle, target_angle):
-        current_idx = self.encode_index(current_angle, *self.angle_range)
-        target_idx = self.encode_index(target_angle, *self.setpoint_range)
+    def update_input(self, current_angle=None, target_angle=None):
+        if self.use_explicit_inputs and self.explicit_current is not None and self.explicit_target is not None:
+            current_idx = self.encode_index(self.explicit_current, *self.angle_range)
+            target_idx = self.encode_index(self.explicit_target, *self.setpoint_range)
+        else:
+            current_idx = self.encode_index(current_angle, *self.angle_range)
+            target_idx = self.encode_index(target_angle, *self.setpoint_range)
         self.s = torch.zeros(1, self.num_neurons)  # 确保是 (1, num_neurons)
         self.s[0, current_idx] = 1
         self.s[0, target_idx] = 1
+        self.last_indices = (current_idx, target_idx)  # 保存索引
         # self.s = (self.s > 0).bool()
         print("INPUT____Updated input layer s shape:", self.s.shape)  # Debug print
         print(f"INPUT____current_angle: {current_angle}, mapped index: {current_idx}")
         print(f"INPUT____target_angle: {target_angle}, mapped index: {target_idx}")
-
+        return current_idx, target_idx
+    
     def forward(self, x, input_1_value=None, input_2_value=None, *args, **kwargs):
 
         # # Generate virtual input
@@ -40,6 +55,9 @@ class InputLayer(Nodes):
         # self.s = (self.s > 0).bool()
         # print(f"INPUT___Shape of s (source spikes): {self.s.shape}, Data type: {self.s.dtype}")
         # print(f"DEBUG___Converted self.s to bool: {self.s}")
+    # def forward(self, x, current_angle=None, target_angle=None, *args, **kwargs):
+        # if current_angle is not None and target_angle is not None:
+        #     self.update_input(current_angle, target_angle)
         return self.s
 
 

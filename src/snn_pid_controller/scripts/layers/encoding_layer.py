@@ -83,6 +83,12 @@ class EncodingLayer(Nodes):
         self.e_t_range = e_t_range  # (min, max)
         self.operation_array = self.create_2D_operation_array()
 
+        # 用于控制是否使用显式索引
+        self.use_indices = False
+        self.y_index = None
+        self.r_index = None
+
+
     def create_2D_operation_array(self):
         """
         Create a 2D operation array for subtraction.
@@ -106,7 +112,7 @@ class EncodingLayer(Nodes):
         neuron_index = int(round((e_t_clipped - e_t_min) / (e_t_max - e_t_min) * (self.num_neurons - 1)))
         return neuron_index
 
-    def forward(self, x):
+    def forward(self, x, y_index=None, r_index=None):
         """
         Perform the forward pass and update the layer state.
         :param x: A tensor of shape (1, num_neurons), representing input spikes.
@@ -119,16 +125,22 @@ class EncodingLayer(Nodes):
         if x.dim() == 3 and x.shape[1] == 1:
             x = x.squeeze(1)
 
-        # Get active indices
-        active_indices = torch.nonzero(x, as_tuple=True)[1].tolist()
-        if len(active_indices) < 2:
-            print("Encoding___Warning: Less than two inputs active for encoding.")
-            self.s = torch.zeros(1, self.num_neurons, dtype=torch.float)  # Reset state
-            return self.s
+        # 使用显式传递的索引
+        if self.use_indices and self.y_index is not None and self.r_index is not None:
+            y_index = self.y_index
+            r_index = self.r_index
+        else:
 
-        # Extract y_index and r_index
-        y_index, r_index = active_indices[:2]
-        print(f"Encoding___y_index: {y_index}, r_index: {r_index}")
+            # Get active indices
+            active_indices = torch.nonzero(x, as_tuple=True)[1].tolist()
+            if len(active_indices) < 2:
+                print("Encoding___Warning: Less than two inputs active for encoding.")
+                self.s = torch.zeros(1, self.num_neurons, dtype=torch.float)  # Reset state
+                return self.s
+
+            # Extract y_index and r_index
+            y_index, r_index = active_indices[:2]
+            print(f"Encoding___y_index: {y_index}, r_index: {r_index}")
 
         # Calculate the diagonal index
         diagonal_index = self.operation_array[y_index, r_index]

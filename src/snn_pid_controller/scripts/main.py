@@ -55,8 +55,8 @@ identity_weights_integration_to_output = torch.eye(output_layer.n, integration_l
 identity_weights_encoding_to_output = torch.eye(output_layer.n, encoding_layer.n)
 
 Kp = 1
-Ki = 1
-Kd = 0.1
+Ki = 0.2
+Kd = 0.2
 identity_weights_p_to_output = create_weight_matrix(P_layer.n, output_layer.n) *Kp
 identity_weights_i_to_output = create_weight_matrix(I_layer.n, output_layer.n) *Ki
 identity_weights_d_to_output = create_weight_matrix(D_layer.n, output_layer.n) *Kd
@@ -161,9 +161,9 @@ for name, layer in layers_to_monitor.items():
 
 # input_layer
 
-current_angle, target_angle = input_layer.generate_virtual_input()
-input_layer.update_input(current_angle, target_angle)
-input_data = input_layer.s.clone() # 获取当前的状态变量
+# current_angle, target_angle = input_layer.generate_virtual_input()
+# input_layer.update_input(current_angle, target_angle)
+# input_data = input_layer.s.clone() # 获取当前的状态变量
 
 
 ## Simulate network
@@ -184,8 +184,22 @@ input_data = input_layer.s.clone() # 获取当前的状态变量
 
 # except RuntimeError as e:
 #     print("RuntimeError encountered:", e)
+input_layer.use_explicit_inputs = True
 
+input_layer.explicit_current = -40  # 显式设置 current_idx
+input_layer.explicit_target = 0  # 显式设置 target_idx
+current_angle, target_angle = input_layer.explicit_current,input_layer.explicit_target 
+current_idx, target_idx = input_layer.last_indices
+input_layer.update_input()
+input_data = input_layer.s.clone()
 
+encoding_layer.use_indices = True
+# 获取 InputLayer 的索引
+current_idx, target_idx = input_layer.last_indices
+
+# 将索引传递给 EncodingLayer
+encoding_layer.y_index = current_idx
+encoding_layer.r_index = target_idx
 try:
     # 仿真参数
     num_steps = 50  # 仿真的时间步数
@@ -198,12 +212,33 @@ try:
         
         # 更新输入数据，可以根据需要生成不同的输入
 
-        input_data = input_data.repeat(1, 1)  # 重复以匹配网络预期的输入格式
+        # input_data = input_data.repeat(1, 1)  # 重复以匹配网络预期的输入格式
 
         print(f"Input data for step {step + 1}: {input_data.shape}")
 
+
+        # input_layer.use_explicit_inputs = False
+        # 显式模式，传递 y_index 和 r_index
+        encoding_layer.use_indices = True
+        # # 获取 InputLayer 的索引
+        current_idx, target_idx = input_layer.last_indices
+
+        # 将索引传递给 EncodingLayer
+        encoding_layer.y_index = current_idx
+        encoding_layer.r_index = target_idx
+
         # 仿真网络
         network.run(inputs={'input': input_data}, time=time_per_step)
+
+        input_layer.use_explicit_inputs = False
+        # 获取 InputLayer 的索引
+        current_idx, target_idx = input_layer.last_indices
+
+        # 将索引传递给 EncodingLayer
+        encoding_layer.y_index = current_idx
+        encoding_layer.r_index = target_idx
+
+
 
         # 检查输入层或其他层的状态
         print(f"Input layer state at step {step + 1}: {input_layer.s.shape}, Data type: {input_layer.s.dtype}")
