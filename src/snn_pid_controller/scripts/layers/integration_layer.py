@@ -113,21 +113,22 @@ class IntegrationLayer(Nodes):
 
         # 获取激活神经元索引
         e_t_index = active_indices[0]
-        print(f"Integration___e_t_index: {e_t_index}")
-
+        # print(f"Integration___e_t_index: {e_t_index}")
+        increment = 0
+        
         # 判断误差信号的正负并更新计数器
         if e_t_index > self.num_neurons // 2:  # 正误差信号
             increment = (e_t_index - self.num_neurons // 2) / self.scale_factor
             self.c_plus += increment
             self.c_minus -= increment  # 保持镜像关系
             self.c_minus = torch.clamp(self.c_minus, min=0)  # 确保 c_minus 非负
-            print(f"Integration___Positive error. Increment: {increment}, c_plus: {self.c_plus}, c_minus: {self.c_minus}")
+            # print(f"Integration___Positive error. Increment: {increment}, c_plus: {self.c_plus}, c_minus: {self.c_minus}")
         elif e_t_index < self.num_neurons // 2:  # 负误差信号
             increment = (self.num_neurons // 2 - e_t_index) / self.scale_factor
             self.c_minus += increment
             self.c_plus -= increment  # 保持镜像关系
             self.c_plus = torch.clamp(self.c_plus, min=0)  # 确保 c_plus 非负
-            print(f"Integration___Negative error. Increment: {increment}, c_plus: {self.c_plus}, c_minus: {self.c_minus}")
+            # print(f"Integration___Negative error. Increment: {increment}, c_plus: {self.c_plus}, c_minus: {self.c_minus}")
 
         if self.c_plus >= self.threshold:
             # 软复位计数器
@@ -136,7 +137,7 @@ class IntegrationLayer(Nodes):
             # 根据增量调整 shift_index
             shift_index = torch.argmax(self.I).item()
             shift_index = min(shift_index + int(increment / self.step_size), self.num_neurons - 1)  # 增量影响步长
-            print(f"Integration___ShiftUp activated. New shift_index: {shift_index}")
+            # print(f"Integration___ShiftUp activated. New shift_index: {shift_index}")
 
             # 更新 I 层状态
             self.I.zero_()  # 清零 I 层
@@ -148,21 +149,21 @@ class IntegrationLayer(Nodes):
 
             # 根据增量调整 shift_index
             shift_index = torch.argmax(self.I).item()
-            print(f"Integration___before ShiftDown activated. OLD shift_index: {shift_index}")
+            # print(f"Integration___before ShiftDown activated. OLD shift_index: {shift_index}")
             shift_index = max(shift_index - int(increment / self.step_size), 0)  # 增量影响步长
-            print(f"Integration___ShiftDown activated. New shift_index: {shift_index}")
+            # print(f"Integration___ShiftDown activated. New shift_index: {shift_index}")
 
             # 更新 I 层状态
             self.I.zero_()  # 清零 I 层
             self.I[0, shift_index] = 1  # 激活新位置
 
 
-        print(f"Integration___Updated I state: {self.I}")
+        # print(f"Integration___Updated I state: {self.I}")
 
 
         # 获取 I 层当前激活神经元索引
         I_active_index = torch.argmax(self.I).item()
-        print(f"Integration___Active index in I: {I_active_index}")
+        # print(f"Integration___Active index in I: {I_active_index}")
 
         # 更新 self.s，确保与 BindsNET 兼容
         self.s = self.I.clone()

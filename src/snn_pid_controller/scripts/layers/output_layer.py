@@ -20,6 +20,9 @@ class ComplexOutputLayer(DiehlAndCookNodes):  # 继承 DiehlAndCookNodes
         # 设置阈值和偏置电流
         self.thresholds = torch.linspace(0.1, 1.0, steps=num_neurons)
         self.bias_current = self.thresholds[num_neurons // 2]
+        self.s = torch.zeros(self.num_neurons)  # 初始化 self.s 为全零张量
+
+        
 
     def integrate_signals(self, P_signal, I_signal, D_signal=0):
         """
@@ -62,10 +65,34 @@ class ComplexOutputLayer(DiehlAndCookNodes):  # 继承 DiehlAndCookNodes
     #     self.integrate_signals(P_signal, I_signal, D_signal)
     #     return self.compute_output()
     def forward(self, x):
-        
-        
-        return self.s
+        print(f"OUTPUT___Received input x: {x}")
+        print(f"OUTPUT___Received of s (source spikes): {x.shape}, Data type: {x.dtype}")
+        """
+        处理输入 B 群的电位，并计算 U 群的输出（spike 发放信号）。
+        :param x: 输入的 B 群电位，形状 [num_neurons]。
+        :return: U 群的 spike 信号 self.s。
+        """
+        # 确保输入是 1D 张量，更新 self.B
+        self.B = x.squeeze()
 
+        # 找到所有超过阈值的神经元
+        active_indices = (self.B >= self.thresholds).nonzero(as_tuple=True)[0]
+
+        # 初始化 self.s（U 群的 spike 信号）
+        self.s.zero_()
+
+        if len(active_indices) > 0:
+            # 找到激活的最大索引
+            max_index = active_indices.max().item()
+
+            # 激活 U 群中对应的神经元
+            self.s[max_index] = 1  # 激活 U 群最大索引的神经元
+
+            # 抑制较低索引的神经元
+            self.s[:max_index] = 0
+
+        return self.s  # 返回 U 群的 spike 输出
+    
     def compute_decays(self, dt):
         """覆盖 compute_decays 方法"""
         pass  # 不执行任何操作

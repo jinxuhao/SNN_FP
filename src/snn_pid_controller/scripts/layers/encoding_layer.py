@@ -123,7 +123,7 @@ class EncodingLayer(Nodes):
         active_indices = torch.nonzero(x, as_tuple=True)[1].tolist()
         if len(active_indices) < 2:
             print("Encoding___Warning: Less than two inputs active for encoding.")
-            self.s = torch.zeros(1, self.num_neuron, dtype=torch.floats)  # Reset state
+            self.s = torch.zeros(1, self.num_neurons, dtype=torch.float)  # Reset state
             return self.s
 
         # Extract y_index and r_index
@@ -132,7 +132,7 @@ class EncodingLayer(Nodes):
 
         # Calculate the diagonal index
         diagonal_index = self.operation_array[y_index, r_index]
-        print(f"Encoding___diagonal_index: {diagonal_index}")
+        # print(f"Encoding___diagonal_index: {diagonal_index}")
         # Map diagonal index to e_t value
         e_t_value = (self.num_neurons + diagonal_index) /(2 * (self.num_neurons - 1)) * (self.e_t_range[1] - self.e_t_range[0])
         e_t_value += self.e_t_range[0]
@@ -149,4 +149,5 @@ class EncodingLayer(Nodes):
         # print(f"Encoding___Output state s shape: {self.s.shape}")
         # print(f"Encoding___Output of s (source spikes): {self.s.shape}, Data type: {self.s.dtype}")
         # # self.s = (self.s > 0).bool()
+        x = x.view(x.size(0), -1)
         return self.s
