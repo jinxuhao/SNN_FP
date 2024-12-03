@@ -39,16 +39,19 @@ class PIntermediateLayer(Nodes):
                 self.negative[0, self.num_neurons // 2 - index] = 1
                 self.s[0, index] = 1  # 更新 self.s
 
-        print(f"PIntermediateLayer___Positive: {self.positive}")
-        print(f"PIntermediateLayer___Negative: {self.negative}")
-        print(f"PIntermediateLayer___Updated self.s: {self.s}")
+        # print(f"PIntermediateLayer___Positive: {self.positive}")
+        # print(f"PIntermediateLayer___Negative: {self.negative}")
+        # print(f"PIntermediateLayer___Updated self.s: {self.s}")
 
     def forward(self, x):
         """
         接收输入信号，调用 `process_signal` 方法，并返回更新后的 self.s。
         :param x: 输入信号。
         """
-        self.process_signal(x)
+        if x.dim() == 3 and x.shape[1] == 1:
+            x = x.squeeze(1)
+        self.s =x
+        # self.process_signal(x)
         return self.s
 
         #####P+ 和 P- 作为一个整体节点传递P_combined = P_plus - P_minus）######

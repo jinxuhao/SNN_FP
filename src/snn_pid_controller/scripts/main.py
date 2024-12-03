@@ -55,7 +55,7 @@ identity_weights_integration_to_output = torch.eye(output_layer.n, integration_l
 identity_weights_encoding_to_output = torch.eye(output_layer.n, encoding_layer.n)
 
 Kp = 1
-Ki = 0.2
+Ki = 0.015
 Kd = 0.2
 identity_weights_p_to_output = create_weight_matrix(P_layer.n, output_layer.n) *Kp
 identity_weights_i_to_output = create_weight_matrix(I_layer.n, output_layer.n) *Ki
@@ -78,20 +78,7 @@ i_to_output = Connection(source=I_layer, target=output_layer, w=identity_weights
     requires_grad=False)
 d_to_output = Connection(source=D_layer, target=output_layer, w=identity_weights_d_to_output, 
     requires_grad=False)
-# integration_to_output = Connection(source=integration_layer, target=output_layer,w = identity_weights_integration_to_output, 
-#     requires_grad=False)
-# encoding_to_output = Connection(source=encoding_layer, target=output_layer,w = identity_weights_encoding_to_output, 
-#     requires_grad=False)
 
-
-
-# multi_conn = MulticompartmentConnection(
-#     source=["encoding", "integration"],  # 来源层
-#     target= "output",                          # 目标层
-#     device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),                                # 运行设备
-#     weights=[0.5, 0.5],                            # 各来源层的权重
-#     w=[identity_weights_encoding_to_output, identity_weights_integration_to_output]
-# )
 
 
 
@@ -126,68 +113,16 @@ for name, layer in layers_to_monitor.items():
     network.add_monitor(monitors[name], name=f'{name}_monitor')
 
 
-# # 生成初始输入数据
-# # Generate input data as tensor
-# current_angle, target_angle = input_layer.generate_virtual_input()
-# input_data = {'input': input_layer.forward()}
-# print(f"Input data shape for network: {input_data['input'].shape}")  # Verify shape
-
-
-# # 生成虚拟输入
-# current_angle, target_angle = input_layer.generate_virtual_input()
-# input_layer.update_input(current_angle, target_angle)
-# input_data = {'input': input_layer.s}
-
-# print("Input data shape for network:", input_data['input'].shape)  # Should be (1, 63)
-# # 使用输入层进行编码
-# encoded_input = input_layer.forward()
-
-# # 检查 encoded_input 的形状
-# print("Encoded input shape:", encoded_input.shape)
-
-# # 准备输入数据，确保形状为 (1, 63)
-# input_data = {'input': encoded_input.view(1, -1)}
-# print("Input data shape for network:", input_data['input'].shape)
-
-# # 确保 input_layer 的 `s` 属性的形状符合期望
-# print("Shape of source.s in input_to_encoding:", input_layer.s.shape)
-# 生成随机输入数据（确保为张量，而不是嵌套字典）
-# Prepare inputs without using 'x' in forward()
-
-# current_angle, target_angle = input_layer.generate_virtual_input()
-# print("current_angle:", current_angle)
-# print("target_angle:", target_angle)
-
-
 # input_layer
 
 # current_angle, target_angle = input_layer.generate_virtual_input()
 # input_layer.update_input(current_angle, target_angle)
 # input_data = input_layer.s.clone() # 获取当前的状态变量
 
-
-## Simulate network
-# print(f"RUN___Input data shape for network:{input_data.shape},Data type: {input_data.dtype}")
-# 运行网络
-# try:
-#     # Simulate network
-#     print("Before network.run()")
-#     print(f"Input data shape for network: {input_data.shape}")
-#     # print(f"Input data shape for network: {input_data}")
-#     input_data = input_data.repeat(4, 1)  # 重复两次，变成 [2, neurons]
-
-#     network.run(inputs={'input': input_data}, time=4)
-#     # print(f"AFTER___Input data shape for network: {input_layer.s},Data type: {input_layer.s.dtype}")
-#     # # print(f"each Encoding layer state: {encoding_layer.s}")
-#     # print(f"Layer encoding received input with shape {encoding_layer.s.shape},Data type: {encoding_layer.s.dtype}")
-    
-
-# except RuntimeError as e:
-#     print("RuntimeError encountered:", e)
 input_layer.use_explicit_inputs = True
 
-input_layer.explicit_current = -40  # 显式设置 current_idx
-input_layer.explicit_target = 0  # 显式设置 target_idx
+input_layer.explicit_current = -20  # 显式设置 current_idx
+input_layer.explicit_target = 30  # 显式设置 target_idx
 current_angle, target_angle = input_layer.explicit_current,input_layer.explicit_target 
 current_idx, target_idx = input_layer.last_indices
 input_layer.update_input()
@@ -202,7 +137,7 @@ encoding_layer.y_index = current_idx
 encoding_layer.r_index = target_idx
 try:
     # 仿真参数
-    num_steps = 50  # 仿真的时间步数
+    num_steps = 30  # 仿真的时间步数
     time_per_step = 1  # 每步的仿真时间
     neurons = input_data.shape[1]  # 输入神经元数量
 
@@ -247,7 +182,7 @@ try:
         print(f"Output active neuron index at step {step + 1}: {active_neuron_index}")
         # 根据输出结果更新 y (current_angle)
         output_value = active_neuron_index * (10 / num_neurons) - 5  # 假设范围是 [-5, 5]
-        current_angle -= output_value  # 更新 current_angle
+        current_angle += output_value  # 更新 current_angle
 
         input_layer.update_input(current_angle, target_angle)  # 保持 target_angle 不变
         input_data = input_layer.s.clone() 

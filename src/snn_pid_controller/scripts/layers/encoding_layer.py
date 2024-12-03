@@ -72,7 +72,7 @@ import torch
 from bindsnet.network.nodes import Nodes
 
 class EncodingLayer(Nodes):
-    def __init__(self, num_neurons=63, e_t_range=(-80, 80)):
+    def __init__(self, num_neurons=63, e_t_range=(-60, 60)):
         """
         Encoding layer that uses 2D arrays to compute mathematical operations.
         :param num_neurons: Number of neurons in the 1D input and output populations.
@@ -98,7 +98,7 @@ class EncodingLayer(Nodes):
         for i in range(self.num_neurons):
             for j in range(self.num_neurons):
                 # Calculate the diagonal index
-                diagonal_index = i - j
+                diagonal_index = j - i
                 operation_array[i, j] = diagonal_index
         return operation_array
 
@@ -112,7 +112,7 @@ class EncodingLayer(Nodes):
         neuron_index = int(round((e_t_clipped - e_t_min) / (e_t_max - e_t_min) * (self.num_neurons - 1)))
         return neuron_index
 
-    def forward(self, x, y_index=None, r_index=None):
+    def forward(self, x):
         """
         Perform the forward pass and update the layer state.
         :param x: A tensor of shape (1, num_neurons), representing input spikes.
@@ -129,6 +129,7 @@ class EncodingLayer(Nodes):
         if self.use_indices and self.y_index is not None and self.r_index is not None:
             y_index = self.y_index
             r_index = self.r_index
+            print(f"Encoding___y_index_1: {y_index}, r_index: {r_index}")
         else:
 
             # Get active indices
@@ -146,7 +147,8 @@ class EncodingLayer(Nodes):
         diagonal_index = self.operation_array[y_index, r_index]
         # print(f"Encoding___diagonal_index: {diagonal_index}")
         # Map diagonal index to e_t value
-        e_t_value = (self.num_neurons + diagonal_index) /(2 * (self.num_neurons - 1)) * (self.e_t_range[1] - self.e_t_range[0])
+        e_t_value = ((self.num_neurons-1) + diagonal_index) /(2 * (self.num_neurons - 1)) * (self.e_t_range[1] - self.e_t_range[0])
+        # e_t_value = (( diagonal_index) /(self.num_neurons - 1)) * (self.e_t_range[1] - self.e_t_range[0])
         e_t_value += self.e_t_range[0]
         print(f"Encoding___e_t_value: {e_t_value}")
 

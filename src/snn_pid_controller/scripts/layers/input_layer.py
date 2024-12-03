@@ -36,9 +36,9 @@ class InputLayer(Nodes):
         self.s[0, target_idx] = 1
         self.last_indices = (current_idx, target_idx)  # 保存索引
         # self.s = (self.s > 0).bool()
-        print("INPUT____Updated input layer s shape:", self.s.shape)  # Debug print
-        print(f"INPUT____current_angle: {current_angle}, mapped index: {current_idx}")
-        print(f"INPUT____target_angle: {target_angle}, mapped index: {target_idx}")
+        # print("INPUT____Updated input layer s shape:", self.s.shape)  # Debug print
+        # print(f"INPUT____current_angle: {current_angle}, mapped index: {current_idx}")
+        # print(f"INPUT____target_angle: {target_angle}, mapped index: {target_idx}")
         return current_idx, target_idx
     
     def forward(self, x, input_1_value=None, input_2_value=None, *args, **kwargs):

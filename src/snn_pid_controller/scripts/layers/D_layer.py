@@ -19,7 +19,7 @@ class DIntermediateLayer(Nodes):
         前向传播：接收输入并计算 Delta e_t。
         :param x: 输入信号（one-hot 编码）。
         """
-        print(f"DIntermediateLayer___Received input x: {x}")
+        # print(f"DIntermediateLayer___Received input x: {x}")
 
         # 确保输入形状正确
         if x.dim() == 3:
@@ -27,7 +27,7 @@ class DIntermediateLayer(Nodes):
 
         # 获取当前误差值索引
         active_indices = torch.nonzero(x, as_tuple=True)[1].tolist()
-        print(f"DIntermediateLayer___Active indices: {active_indices}")
+        # print(f"DIntermediateLayer___Active indices: {active_indices}")
 
         if len(active_indices) < 1:
             print("DIntermediateLayer___Warning: No active neurons in the input.")
@@ -41,9 +41,11 @@ class DIntermediateLayer(Nodes):
         # 计算 Delta e_t
         if self.previous_error is not None:
             delta_e_t = current_error - self.previous_error
+            print(f"DIntermediateLayer___ called delta_e_t: {delta_e_t}")
+
         else:
             delta_e_t = 0  # 初始化时，无变化
-        print(f"DIntermediateLayer___Delta e_t: {delta_e_t}")
+        # print(f"DIntermediateLayer___Delta e_t: {delta_e_t}")
 
         # 更新 previous_error
         self.previous_error = current_error
@@ -51,12 +53,12 @@ class DIntermediateLayer(Nodes):
         # 将 Delta e_t 映射到神经元索引
         delta_index = int(delta_e_t * self.scaling_factor) + self.num_neurons // 2
         delta_index = max(0, min(delta_index, self.num_neurons - 1))  # 限制索引范围
-        print(f"DIntermediateLayer___Delta index: {delta_index}")
+        # print(f"DIntermediateLayer___Delta index: {delta_index}")
 
         # 更新 self.s
         self.s.fill_(0)
         self.s[0, delta_index] = 1
-        print(f"DIntermediateLayer___Updated self.s: {self.s}")
+        # print(f"DIntermediateLayer___Updated self.s: {self.s}")
 
         return self.s
 

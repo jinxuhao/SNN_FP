@@ -17,7 +17,7 @@ class IIntermediateLayer(Nodes):
         处理输入信号，将其拆分为正负群 I+ 和 I-，并更新 self.s。
         :param x: 输入信号（稀疏编码）。
         """
-        print(f"IIntermediateLayer___Received input x: {x}")
+        # print(f"IIntermediateLayer___Received input x: {x}")
         
         # 清零正负信号和 self.s
         self.positive.zero_()
@@ -42,14 +42,17 @@ class IIntermediateLayer(Nodes):
                 self.negative[0, negative_index] = 1  # 更新 I-
                 self.s[0, index] = 1  # 更新 self.s
 
-        print(f"IIntermediateLayer___Positive (I+): {self.positive}")
-        print(f"IIntermediateLayer___Negative (I-): {self.negative}")
-        print(f"IIntermediateLayer___Updated self.s: {self.s}")
+        # print(f"IIntermediateLayer___Positive (I+): {self.positive}")
+        # print(f"IIntermediateLayer___Negative (I-): {self.negative}")
+        # print(f"IIntermediateLayer___Updated self.s: {self.s}")
 
     def forward(self, x):
         """
         接收输入信号，并调用 `process_signal` 方法。
         :param x: 输入信号。
         """
-        self.process_signal(x)
+        if x.dim() == 3 and x.shape[1] == 1:
+            x = x.squeeze(1)
+        self.s =x
+        # self.process_signal(x)
         return self.s
