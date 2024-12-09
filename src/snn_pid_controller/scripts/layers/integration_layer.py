@@ -68,7 +68,7 @@ import torch
 from bindsnet.network.nodes import Nodes
 
 class IntegrationLayer(Nodes):
-    def __init__(self, num_neurons=63, threshold=6, scale_factor=1):
+    def __init__(self, num_neurons=63, threshold=5, scale_factor=5):
         """
         改进版积分层，接收 EncodingLayer 的输出信号，并实现误差信号积分。
         :param num_neurons: I 层的神经元数量。
