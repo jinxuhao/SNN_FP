@@ -25,6 +25,8 @@ class InputLayer(Nodes):
         return max(0, min(idx, self.num_neurons - 1))
 
     def update_input(self, current_angle=None, target_angle=None):
+        print("TEST INPUT layer:", current_angle)
+        print("TEST INPUT target_angle:", target_angle)
         if self.use_explicit_inputs and self.explicit_current is not None and self.explicit_target is not None:
             current_idx = self.encode_index(self.explicit_current, *self.angle_range)
             target_idx = self.encode_index(self.explicit_target, *self.setpoint_range)
@@ -58,6 +60,7 @@ class InputLayer(Nodes):
     # def forward(self, x, current_angle=None, target_angle=None, *args, **kwargs):
         # if current_angle is not None and target_angle is not None:
         #     self.update_input(current_angle, target_angle)
+        print("TEST INPUT :", self.s)
         return self.s
 
 

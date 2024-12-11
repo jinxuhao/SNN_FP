@@ -45,7 +45,7 @@ class PIDController:
 
     def compute(self, current_angle, target_angle, dt=0.1):
         error = target_angle - current_angle
-        self.integral += error * dt
+        self.integral  += error * dt
         derivative = (error - self.prev_error) / dt
         output = self.kp * error + self.ki * self.integral + self.kd * derivative
         self.prev_error = error
@@ -74,7 +74,7 @@ network.add_layer(I_layer, name='i_intermediate')
 network.add_layer(D_layer, name='d_intermediate')
 
 # 创建连接
-Kp, Ki, Kd = 1.0, 0.14, 0.0
+Kp, Ki, Kd = 0.40, 0.1458, 0.251
 input_to_encoding = Connection(source=input_layer, target=encoding_layer, w=torch.eye(encoding_layer.n, input_layer.n), requires_grad=False)
 encoding_to_integration = Connection(source=encoding_layer, target=integration_layer, w=torch.eye(integration_layer.n, encoding_layer.n), requires_grad=False)
 encoding_to_p = Connection(source=encoding_layer, target=P_layer, w=torch.eye(P_layer.n, encoding_layer.n), requires_grad=False)
@@ -106,22 +106,22 @@ layers_to_monitor = {
     'output': output_layer
 }
 for name, layer in layers_to_monitor.items():
-    monitors[name] = Monitor(layer, state_vars=['s'], time=100)
+    monitors[name] = Monitor(layer, state_vars=['s'], time=300)
     network.add_monitor(monitors[name], name=f'{name}_monitor')
 
 # 初始化输入
 current_angle = 0  # 初始角度
-target_angle = 20    # 目标角度
+target_angle = 15    # 目标角度
 input_layer.update_input(current_angle, target_angle)
 input_data = input_layer.s.clone()
 
 # 初始化控制器和动态模型
 pid_controller = PIDController(kp=Kp, ki=Ki, kd=Kd)
-snn_dynamics = MassSpringDamper(mass=1.0, damping=0.2, stiffness=1.5, dt=0.1)
-pid_dynamics = MassSpringDamper(mass=1.0, damping=0.2, stiffness=1.5, dt=0.1)
+snn_dynamics = MassSpringDamper(mass=0.750, damping=0.77, stiffness=0.20, dt=0.1)
+pid_dynamics = MassSpringDamper(mass=0.750, damping=0.77, stiffness=0.20, dt=0.1)
 
 # 仿真参数
-num_steps = 700
+num_steps = 300
 time_per_step = 1
 snn_angles = [current_angle]
 pid_angles = [current_angle]
@@ -143,7 +143,7 @@ try:
         # 获取 SNN 输出
         output_spikes = output_layer.s
         snn_active_neuron_index = torch.argmax(output_spikes).item()
-        snn_output_value = snn_active_neuron_index * (80 / (num_neurons - 1)) - 40
+        snn_output_value = snn_active_neuron_index * (60 / (num_neurons - 1)) - 30
         print(f"called Value: {snn_active_neuron_index},  snn_output_value: {snn_output_value}")
 
         # 使用动态模型更新 SNN 的角度
@@ -160,11 +160,41 @@ try:
         pid_angles.append(pid_current_angle)
 
         # 更新输入
+        print("TEST INPUT main:", current_angle)
         input_layer.update_input(current_angle, target_angle)
         input_data = input_layer.s.clone()
+        print("TEST INPUT main:", input_data)
         print(f"SNN Current Angle: {current_angle:.2f}, PID Current Angle: {pid_current_angle:.2f}")
 except RuntimeError as e:
     print("RuntimeError encountered:", e)
+
+
+# 绘制尖峰活动
+def plot_spiking_activity(monitors):
+    num_layers = len(monitors)
+    cols = 2
+    rows = (num_layers + cols - 1) // cols
+    fig, axes = plt.subplots(rows, cols, figsize=(15, 5 * rows))
+    axes = axes.flatten()
+    for idx, (name, monitor) in enumerate(monitors.items()):
+        recorded_spikes = [item for item in monitor.recording['s'] if isinstance(item, torch.Tensor) and item.numel() > 0]
+        if recorded_spikes:
+            spikes = torch.cat(recorded_spikes, dim=0).squeeze(1)
+            ax = axes[idx]
+            im = ax.imshow(spikes.numpy().T, aspect='auto', cmap='Reds', interpolation='nearest')
+            fig.colorbar(im, ax=ax, orientation='vertical', label="Spiking Activity")
+            ax.set_title(f"{name} Layer Spiking Activity")
+            ax.set_xlabel("Simulation Time (Steps)")
+            ax.set_ylabel("Neuron Index")
+        else:
+            axes[idx].axis('off')
+            axes[idx].set_title(f"No Spiking Activity in {name} Layer")
+    for ax in axes[len(monitors):]:
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show(block=True)
+
+
 # 绘制对比曲线
 plt.figure(figsize=(10, 6))
 plt.plot(range(num_steps + 1), snn_angles, label='SNN Controller', linestyle='-', marker='o')
@@ -177,3 +207,5 @@ plt.grid(True)
 
 plt.show(block=True)
 
+# 绘制尖峰活动
+plot_spiking_activity(monitors)

@@ -68,7 +68,7 @@ import torch
 from bindsnet.network.nodes import Nodes
 
 class IntegrationLayer(Nodes):
-    def __init__(self, num_neurons=63, threshold=5, scale_factor=5):
+    def __init__(self, num_neurons=63, threshold=1, scale_factor=1):
         """
         改进版积分层，接收 EncodingLayer 的输出信号，并实现误差信号积分。
         :param num_neurons: I 层的神经元数量。
@@ -79,7 +79,7 @@ class IntegrationLayer(Nodes):
         self.num_neurons = num_neurons
         self.threshold = threshold
         self.scale_factor = scale_factor
-        self.step_size =1#5 # 单次步长的基准值
+        self.step_size =5#5 # 单次步长的基准值
 
         # 初始化辅助神经元群体
         self.c_plus = torch.zeros(1, 1)  # c+ 计数器神经元
@@ -115,7 +115,7 @@ class IntegrationLayer(Nodes):
         e_t_index = active_indices[0]
         # print(f"Integration___e_t_index: {e_t_index}")
         increment = abs(e_t_index - self.num_neurons // 2) / self.scale_factor
-        print(f"Integration___increment activated. increment: {increment}")
+        print(f"Integration___increment activated. increment: {increment}, e_t_index : {e_t_index}")
 
         # 判断误差信号的正负并更新计数器
         if e_t_index > self.num_neurons // 2:  # 正误差信号
@@ -123,6 +123,8 @@ class IntegrationLayer(Nodes):
             self.c_plus += increment
             self.c_minus -= increment  # 保持镜像关系
             self.c_minus = torch.clamp(self.c_minus, min=0)  # 确保 c_minus 非负
+            print(f"Integration___increment self.c_plus : {self.c_plus }, self.c_minus : {self.c_minus}")
+
             # print(f"Integration___Positive error. Increment: {increment}, c_plus: {self.c_plus}, c_minus: {self.c_minus}")
         
         elif e_t_index < self.num_neurons // 2:  # 负误差信号
@@ -139,7 +141,7 @@ class IntegrationLayer(Nodes):
             # 根据增量调整 shift_index
             shift_index = torch.argmax(self.I).item()
             shift_index = min(shift_index + int(increment / self.step_size), self.num_neurons - 1)  # 增量影响步长
-            # print(f"Integration___ShiftUp activated. New shift_index: {shift_index}")
+            print(f"Integration___ShiftUp activated. New shift_index: {shift_index}")
 
             # 更新 I 层状态
             self.I.zero_()  # 清零 I 层
