@@ -20,7 +20,7 @@ def create_weight_matrix(source_size, target_size, diagonal_value=1.0):
 
 # 定义质量-弹簧-阻尼系统
 class MassSpringDamper:
-    def __init__(self, mass=1.0, damping=2.0, stiffness=20, dt=0.1):
+    def __init__(self, mass=1.0, damping=2.0, stiffness=20, dt=0.01):
         self.mass = mass
         self.damping = damping
         self.stiffness = stiffness
@@ -43,7 +43,7 @@ class PIDController:
         self.prev_error = 0
         self.integral = 0
 
-    def compute(self, current_angle, target_angle, dt=0.1):
+    def compute(self, current_angle, target_angle, dt=0.01):
         error = target_angle - current_angle
         self.integral  += error * dt
         derivative = (error - self.prev_error) / dt
@@ -55,7 +55,7 @@ class PIDController:
 network = Network()
 
 # 初始化各层
-num_neurons = 63
+num_neurons = 1800+1#63*3##63*49
 input_layer = InputLayer(num_neurons=num_neurons)
 encoding_layer = EncodingLayer(num_neurons=num_neurons)
 integration_layer = IntegrationLayer(num_neurons=num_neurons)
@@ -74,7 +74,7 @@ network.add_layer(I_layer, name='i_intermediate')
 network.add_layer(D_layer, name='d_intermediate')
 
 # 创建连接
-Kp, Ki, Kd = 0.40, 0.1458, 0.251
+Kp, Ki, Kd = 0.5514, 0.0467, 2.654*0
 input_to_encoding = Connection(source=input_layer, target=encoding_layer, w=torch.eye(encoding_layer.n, input_layer.n), requires_grad=False)
 encoding_to_integration = Connection(source=encoding_layer, target=integration_layer, w=torch.eye(integration_layer.n, encoding_layer.n), requires_grad=False)
 encoding_to_p = Connection(source=encoding_layer, target=P_layer, w=torch.eye(P_layer.n, encoding_layer.n), requires_grad=False)
@@ -105,9 +105,9 @@ layers_to_monitor = {
     'd_intermediate': D_layer,
     'output': output_layer
 }
-for name, layer in layers_to_monitor.items():
-    monitors[name] = Monitor(layer, state_vars=['s'], time=300)
-    network.add_monitor(monitors[name], name=f'{name}_monitor')
+# for name, layer in layers_to_monitor.items():
+#     monitors[name] = Monitor(layer, state_vars=['s'], time=num_steps * time_per_step)
+#     network.add_monitor(monitors[name], name=f'{name}_monitor')
 
 # 初始化输入
 current_angle = 0  # 初始角度
@@ -117,14 +117,18 @@ input_data = input_layer.s.clone()
 
 # 初始化控制器和动态模型
 pid_controller = PIDController(kp=Kp, ki=Ki, kd=Kd)
-snn_dynamics = MassSpringDamper(mass=0.750, damping=0.77, stiffness=0.20, dt=0.1)
-pid_dynamics = MassSpringDamper(mass=0.750, damping=0.77, stiffness=0.20, dt=0.1)
+snn_dynamics = MassSpringDamper(mass=5, damping=2, stiffness=0.20, dt=0.1)
+pid_dynamics = MassSpringDamper(mass=5, damping=2, stiffness=0.20, dt=0.1)
 
 # 仿真参数
-num_steps = 300
-time_per_step = 1
+num_steps = 700
+time_per_step = 10
 snn_angles = [current_angle]
 pid_angles = [current_angle]
+input_data = input_layer.s.clone().unsqueeze(0).repeat(time_per_step, 1, 1)
+for name, layer in layers_to_monitor.items():
+    monitors[name] = Monitor(layer, state_vars=['s'], time=num_steps*time_per_step)
+    network.add_monitor(monitors[name], name=f'{name}_monitor')
 
 try:
     for step in range(num_steps):
@@ -143,7 +147,7 @@ try:
         # 获取 SNN 输出
         output_spikes = output_layer.s
         snn_active_neuron_index = torch.argmax(output_spikes).item()
-        snn_output_value = snn_active_neuron_index * (60 / (num_neurons - 1)) - 30
+        snn_output_value = snn_active_neuron_index * (360 / (num_neurons-1)) - 180
         print(f"called Value: {snn_active_neuron_index},  snn_output_value: {snn_output_value}")
 
         # 使用动态模型更新 SNN 的角度
@@ -151,9 +155,11 @@ try:
         snn_angles.append(current_angle)
 
         # PID 控制器运行
-        if step >= 2:
+        if step >= 0:
             pid_output = pid_controller.compute(current_angle=pid_angles[-1], target_angle=target_angle)
             pid_current_angle = pid_dynamics.step(pid_output)
+            print(f"called pid_current_angle Value: {pid_output}")
+
         else:
             pid_current_angle = pid_angles[-1]
 
@@ -161,8 +167,10 @@ try:
 
         # 更新输入
         print("TEST INPUT main:", current_angle)
+        print("TEST INPUT v:", P_layer.positive)
         input_layer.update_input(current_angle, target_angle)
-        input_data = input_layer.s.clone()
+        # input_data = input_layer.s.clone()
+        input_data = input_layer.s.clone().unsqueeze(0).repeat(time_per_step, 1, 1)
         print("TEST INPUT main:", input_data)
         print(f"SNN Current Angle: {current_angle:.2f}, PID Current Angle: {pid_current_angle:.2f}")
 except RuntimeError as e:

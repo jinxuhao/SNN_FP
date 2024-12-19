@@ -35,7 +35,7 @@ class DIntermediateLayer(Nodes):
 
         # 解码当前误差值
         current_error_index = active_indices[0]
-        current_error = current_error_index - self.num_neurons // 2  # 中心为 0 的对称范围
+        current_error = current_error_index - (self.num_neurons-1) // 2  # 中心为 0 的对称范围
         print(f"DIntermediateLayer___Current error: {current_error}")
 
         # 计算 Delta e_t
@@ -51,7 +51,7 @@ class DIntermediateLayer(Nodes):
         self.previous_error = current_error
 
         # 将 Delta e_t 映射到神经元索引
-        delta_index = int(delta_e_t * self.scaling_factor) + self.num_neurons // 2
+        delta_index = int(delta_e_t * self.scaling_factor) + (self.num_neurons-1) // 2
         delta_index = max(0, min(delta_index, self.num_neurons - 1))  # 限制索引范围
         # print(f"DIntermediateLayer___Delta index: {delta_index}")
 

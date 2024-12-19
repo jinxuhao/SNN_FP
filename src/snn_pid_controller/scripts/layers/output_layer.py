@@ -120,7 +120,7 @@ class ComplexOutputLayer(DiehlAndCookNodes):  # 继承 DiehlAndCookNodes
         if len(active_indices) > 0:
             num_neurons = self.B.shape[0]
             max_range = 40  # 设定值范围的一半
-            mid_index = num_neurons // 2
+            mid_index = (num_neurons-1) // 2
 
             # 映射索引到值
             mapped_values = (active_indices.float() - mid_index)

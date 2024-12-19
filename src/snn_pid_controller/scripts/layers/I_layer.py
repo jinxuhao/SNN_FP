@@ -33,12 +33,12 @@ class IIntermediateLayer(Nodes):
         if len(active_indices) > 0:
             index = active_indices[0]  # 获取激活神经元的索引
             
-            if index >= self.num_neurons // 2:  # 正值处理
-                positive_index = index - self.num_neurons // 2
+            if index >= (self.num_neurons-1) // 2:  # 正值处理
+                positive_index = index - (self.num_neurons-1) // 2
                 self.positive[0, positive_index] = 1  # 更新 I+
                 self.s[0, index] = 1  # 更新 self.s
             else:  # 负值处理
-                negative_index = self.num_neurons // 2 - index
+                negative_index = (self.num_neurons-1) // 2 - index
                 self.negative[0, negative_index] = 1  # 更新 I-
                 self.s[0, index] = 1  # 更新 self.s
 

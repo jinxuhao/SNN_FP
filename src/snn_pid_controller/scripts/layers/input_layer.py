@@ -3,7 +3,7 @@ import numpy as np
 from bindsnet.network.nodes import Nodes
 
 class InputLayer(Nodes):
-    def __init__(self, num_neurons, angle_range=(-40, 40), setpoint_range=(-40, 40), angular_velocity_range=(-80, 80)):
+    def __init__(self, num_neurons, angle_range=(-180, 180), setpoint_range=(-180, 180), angular_velocity_range=(-80, 80)):
         super(InputLayer, self).__init__(n=num_neurons, shape=(1, num_neurons))
         self.num_neurons = num_neurons
         self.angle_range = angle_range
@@ -30,9 +30,11 @@ class InputLayer(Nodes):
         if self.use_explicit_inputs and self.explicit_current is not None and self.explicit_target is not None:
             current_idx = self.encode_index(self.explicit_current, *self.angle_range)
             target_idx = self.encode_index(self.explicit_target, *self.setpoint_range)
+            print("TEST INPUT target_angle index:", target_idx)
         else:
             current_idx = self.encode_index(current_angle, *self.angle_range)
             target_idx = self.encode_index(target_angle, *self.setpoint_range)
+            print("TEST INPUT target_angle index2:", target_idx)
         self.s = torch.zeros(1, self.num_neurons)  # 确保是 (1, num_neurons)
         self.s[0, current_idx] = 1
         self.s[0, target_idx] = 1
@@ -73,8 +75,8 @@ class InputLayer(Nodes):
 
 
     def compute_decays(self, dt):
-            """覆盖 compute_decays 方法"""
-            pass  # 不执行任何操作
+        """覆盖 compute_decays 方法"""
+        pass  # 不执行任何操作
     
     def set_batch_size(self, batch_size):
         """覆盖 set_batch_size 方法"""

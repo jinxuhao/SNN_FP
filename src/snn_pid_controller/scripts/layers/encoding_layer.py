@@ -72,7 +72,7 @@ import torch
 from bindsnet.network.nodes import Nodes
 
 class EncodingLayer(Nodes):
-    def __init__(self, num_neurons=63, e_t_range=(-60, 60)):
+    def __init__(self, num_neurons=63, e_t_range=(-180, 180)):
         """
         Encoding layer that uses 2D arrays to compute mathematical operations.
         :param num_neurons: Number of neurons in the 1D input and output populations.
