@@ -68,7 +68,7 @@ import torch
 from bindsnet.network.nodes import Nodes
 
 class IntegrationLayer(Nodes):
-    def __init__(self, num_neurons=63, threshold=500, scale_factor=1):
+    def __init__(self, num_neurons=63, threshold=5, scale_factor=1):
         """
         改进版积分层，接收 EncodingLayer 的输出信号，并实现误差信号积分。
         :param num_neurons: I 层的神经元数量。
@@ -79,7 +79,7 @@ class IntegrationLayer(Nodes):
         self.num_neurons = num_neurons
         self.threshold = threshold
         self.scale_factor = scale_factor
-        self.step_size =1#5 # 单次步长的基准值
+        self.step_size =1.0#5 # 单次步长的基准值
 
         # 初始化辅助神经元群体
         self.c_plus = torch.zeros(1, 1)  # c+ 计数器神经元
@@ -136,11 +136,12 @@ class IntegrationLayer(Nodes):
 
         if self.c_plus >= self.threshold:
             # 软复位计数器
-            self.c_plus -= self.threshold  
+            self.c_plus -= self.threshold
 
             # 根据增量调整 shift_index
             shift_index = torch.argmax(self.I).item()
-            shift_index = min(shift_index + int(increment / self.step_size), self.num_neurons - 1)  # 增量影响步长
+            shift_index = min(shift_index + int(self.c_plus / self.step_size), self.num_neurons - 1)  # 增量影响步长
+            # shift_index = min(shift_index + int(increment / self.step_size), self.num_neurons - 1)  # 增量影响步长
             print(f"Integration___ShiftUp activated. New shift_index: {shift_index}")
 
             # 更新 I 层状态
@@ -149,12 +150,13 @@ class IntegrationLayer(Nodes):
 
         if self.c_minus >= self.threshold:
             # 软复位计数器
-            self.c_minus -= self.threshold  
+            self.c_minus -= self.threshold
 
             # 根据增量调整 shift_index
             shift_index = torch.argmax(self.I).item()
             # print(f"Integration___before ShiftDown activated. OLD shift_index: {shift_index}")
-            shift_index = max(shift_index - int(increment / self.step_size), 0)  # 增量影响步长
+            shift_index = max(shift_index - int(self.c_plus / self.step_size), 0)  # 增量影响步长
+            # shift_index = max(shift_index - int(increment / self.step_size), 0)  # 增量影响步长
             print(f"Integration___ShiftDown activated. New shift_index: {shift_index}")
 
             # 更新 I 层状态

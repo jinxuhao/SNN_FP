@@ -10,6 +10,9 @@ from layers.P_layer import PIntermediateLayer
 from layers.I_layer import IIntermediateLayer
 from layers.D_layer import DIntermediateLayer
 import matplotlib.pyplot as plt
+from scipy.io import loadmat
+import matplotlib.pyplot as plt
+
 
 # 工具函数：创建权重矩阵
 def create_weight_matrix(source_size, target_size, diagonal_value=1.0):
@@ -121,7 +124,7 @@ snn_dynamics = MassSpringDamper(mass=5, damping=2, stiffness=0.20, dt=0.1)
 pid_dynamics = MassSpringDamper(mass=5, damping=2, stiffness=0.20, dt=0.1)
 
 # 仿真参数
-num_steps = 700
+num_steps = 500
 time_per_step = 10
 dt = 0.1#time_per_step/1000
 snn_angles = [current_angle]
@@ -204,10 +207,31 @@ def plot_spiking_activity(monitors):
     plt.show(block=True)
 
 
+
+# 加载 .mat 文件
+data = loadmat('src/snn_pid_controller/scripts/matlab/simulation_results_simple001.mat/simulation_results_simple001.mat')
+data01 = loadmat('src/snn_pid_controller/scripts/matlab/simulation_results_simple01.mat/simulation_results_simple01.mat')
+
+time = data['time'].flatten()
+values = data['data'].flatten()
+time01 = data01['time'].flatten()
+values01 = data01['data'].flatten()
+# MATLAB 的时间转换为迭代次数
+matlab_steps = len(time)  # MATLAB 时间步数
+matlab_iterations = [int(t / 0.01) for t in time]  # 转换为迭代次数
+matlab_iterations01  = [int(t / 0.01) for t in time01]
+
+snn_x = [i * 10 for i in range(num_steps + 1)]
+
 # 绘制对比曲线
 plt.figure(figsize=(10, 6))
-plt.plot(range(num_steps + 1), snn_angles, label='SNN Controller', linestyle='-', marker='o')
-plt.plot(range(num_steps + 1), pid_angles, label='PID Controller', linestyle='--', marker='x')
+plt.plot(snn_x, snn_angles, label='SNN Controller', linestyle='-', marker='o')
+# plt.plot(snn_x, pid_angles, label='PID Controller', linestyle='--', marker='x')
+# 绘图
+
+plt.plot(matlab_iterations, values, label='matlab Controller', linestyle='-', marker='x')
+plt.plot(matlab_iterations01, values01, label='matlab 01 Controller', linestyle='-', marker='o')
+
 plt.xlabel('Simulation Step')
 plt.ylabel('Current Angle')
 plt.title('Comparison of SNN and PID Controllers with Mass-Spring-Damper System')
