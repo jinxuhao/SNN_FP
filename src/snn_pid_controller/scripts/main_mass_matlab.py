@@ -46,7 +46,7 @@ class PIDController:
         self.prev_error = 0
         self.integral = 0
 
-    def compute(self, current_angle, target_angle, dt=0.1):
+    def compute(self, current_angle, target_angle, dt=0.001):
         error = target_angle - current_angle
         self.integral  += error * dt
         derivative = (error - self.prev_error) / dt
@@ -58,7 +58,7 @@ class PIDController:
 network = Network()
 
 # 初始化各层
-num_neurons = 1800+1#63*3##63*49
+num_neurons = 11800+1#63*3##63*49
 input_layer = InputLayer(num_neurons=num_neurons)
 encoding_layer = EncodingLayer(num_neurons=num_neurons)
 integration_layer = IntegrationLayer(num_neurons=num_neurons)
@@ -77,7 +77,7 @@ network.add_layer(I_layer, name='i_intermediate')
 network.add_layer(D_layer, name='d_intermediate')
 
 # 创建连接
-Kp, Ki, Kd = 1.72, 0.238, 2.6540 #PI 0.5514, 0.0467, 2.654
+Kp, Ki, Kd = 1.72, 0.238, 2.654 #1.72, 0.238, 0 #PI 0.5514, 0.0467, 2.654
 input_to_encoding = Connection(source=input_layer, target=encoding_layer, w=torch.eye(encoding_layer.n, input_layer.n), requires_grad=False)
 encoding_to_integration = Connection(source=encoding_layer, target=integration_layer, w=torch.eye(integration_layer.n, encoding_layer.n), requires_grad=False)
 encoding_to_p = Connection(source=encoding_layer, target=P_layer, w=torch.eye(P_layer.n, encoding_layer.n), requires_grad=False)
@@ -125,7 +125,7 @@ pid_dynamics = MassSpringDamper(mass=5, damping=2, stiffness=0.20, dt=0.1)
 
 # 仿真参数
 num_steps = 500
-time_per_step = 10
+time_per_step = 1
 dt = 0.1#time_per_step/1000
 snn_angles = [current_angle]
 pid_angles = [current_angle]
@@ -151,7 +151,7 @@ try:
         # 获取 SNN 输出
         output_spikes = output_layer.s
         snn_active_neuron_index = torch.argmax(output_spikes).item()
-        snn_output_value = snn_active_neuron_index * (40 / (num_neurons-1)) - 20
+        snn_output_value = snn_active_neuron_index * (80 / (num_neurons-1)) - 40
         print(f"called Value: {snn_active_neuron_index},  snn_output_value: {snn_output_value}")
 
         # 使用动态模型更新 SNN 的角度
@@ -242,3 +242,4 @@ plt.show(block=True)
 
 # 绘制尖峰活动
 plot_spiking_activity(monitors)
+print(f"Sampling time (dt): {network.dt} ms")

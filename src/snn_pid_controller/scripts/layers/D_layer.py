@@ -2,7 +2,7 @@ import torch
 from bindsnet.network.nodes import Nodes
 
 class DIntermediateLayer(Nodes):
-    def __init__(self, num_neurons=63, scaling_factor=3.0, time_per_step=10):
+    def __init__(self, num_neurons=63, scaling_factor=10.0, time_per_step=1):
         """
         D 层：根据误差变化率 Delta e_t 计算输出。
         :param num_neurons: 神经元数量。
