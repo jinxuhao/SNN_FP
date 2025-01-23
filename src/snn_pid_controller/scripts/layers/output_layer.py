@@ -95,8 +95,8 @@ class ComplexOutputLayer(DiehlAndCookNodes):  # 继承 DiehlAndCookNodes
 
     #     return self.s  # 返回 U 群的 spike 输出
     def forward(self, x):
-        print(f"OUTPUT___Received B x: {x}")
-        print(f"OUTPUT___Received of s (source spikes): {x.shape}, Data type: {x.dtype}")
+        # print(f"OUTPUT___Received B x: {x}")
+        # print(f"OUTPUT___Received of s (source spikes): {x.shape}, Data type: {x.dtype}")
         """
         处理输入 B 群的电位，并计算 U 群的输出（spike 发放信号）。
         同时提取 B 群中所有活跃神经元的索引及其值，并计算加权平均值，再映射到新的索引。
@@ -111,7 +111,7 @@ class ComplexOutputLayer(DiehlAndCookNodes):  # 继承 DiehlAndCookNodes
         active_values = self.B[active_indices]  # 提取对应索引的值
 
         # 打印活跃神经元的索引和值
-        print(f"ACTIVE___Indices: {active_indices.tolist()}, Values: {active_values.tolist()}")
+        # print(f"ACTIVE___Indices: {active_indices.tolist()}, Values: {active_values.tolist()}")
 
         # 初始化 self.s（U 群的 spike 信号）
         self.s.zero_()
@@ -133,7 +133,7 @@ class ComplexOutputLayer(DiehlAndCookNodes):  # 继承 DiehlAndCookNodes
 
             new_index = int(torch.round(new_index))  # 四舍五入到最近的整数索引
             new_index = max(0, min(new_index, num_neurons - 1))  # 限制索引范围
-            # print(f"CALCULATED___mapped_values: {mapped_values}, num_neurons : {active_values}")
+            print(f"CALCULATED___mapped_values: {mapped_values}, num_neurons : {active_values}")
 
             print(f"CALCULATED___Weighted Value: {weighted_value:.2f}, New Index: {new_index}")
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import torch
 from bindsnet.network import Network
 from bindsnet.network.topology import Connection
@@ -12,7 +13,12 @@ from layers.D_layer import DIntermediateLayer
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
-
+import rospy
+from std_msgs.msg import Float64
+from std_msgs.msg import Header
+from rosgraph_msgs.msg import Clock
+from time import sleep
+import time
 
 # 工具函数：创建权重矩阵
 def create_weight_matrix(source_size, target_size, diagonal_value=1.0):
@@ -21,44 +27,13 @@ def create_weight_matrix(source_size, target_size, diagonal_value=1.0):
         weight_matrix[i, i] = diagonal_value
     return weight_matrix
 
-# 定义质量-弹簧-阻尼系统
-class MassSpringDamper:
-    def __init__(self, mass=1.0, damping=2.0, stiffness=20, dt=0.01):
-        self.mass = mass
-        self.damping = damping
-        self.stiffness = stiffness
-        self.dt = dt
-        self.x = 0.0  # 初始角度（位移）
-        self.v = 0.0  # 初始速度
 
-    def step(self, force):
-        acceleration = (force - self.damping * self.v - self.stiffness * self.x) / self.mass
-        self.v += acceleration * self.dt
-        self.x += self.v * self.dt
-        return self.x
-
-# 定义 PID 控制器
-class PIDController:
-    def __init__(self, kp, ki, kd):
-        self.kp = kp
-        self.ki = ki
-        self.kd = kd
-        self.prev_error = 0
-        self.integral = 0
-
-    def compute(self, current_angle, target_angle, dt=0.001):
-        error = target_angle - current_angle
-        self.integral  += error * dt
-        derivative = (error - self.prev_error) / dt
-        output = self.kp * error + self.ki * self.integral + self.kd * derivative
-        self.prev_error = error
-        return output
 
 # 初始化网络
 network = Network()
 
 # 初始化各层
-num_neurons = 1800+1#63*3##63*49
+num_neurons = 6800+1#63*3##63*49
 input_layer = InputLayer(num_neurons=num_neurons)
 encoding_layer = EncodingLayer(num_neurons=num_neurons)
 integration_layer = IntegrationLayer(num_neurons=num_neurons)
@@ -77,7 +52,7 @@ network.add_layer(I_layer, name='i_intermediate')
 network.add_layer(D_layer, name='d_intermediate')
 
 # 创建连接
-Kp, Ki, Kd = 1.72, 0.238, 2.654 #1.72, 0.238, 0 #PI 0.5514, 0.0467, 2.654
+Kp, Ki, Kd = 1.72, 0.238*0.00, 0#1.72, 0.238*0.001, 2.654/0.01  #1.72, 0.238, 0 #PI 0.5514, 0.0467, 2.654         0.238*2*0.004
 input_to_encoding = Connection(source=input_layer, target=encoding_layer, w=torch.eye(encoding_layer.n, input_layer.n), requires_grad=False)
 encoding_to_integration = Connection(source=encoding_layer, target=integration_layer, w=torch.eye(integration_layer.n, encoding_layer.n), requires_grad=False)
 encoding_to_p = Connection(source=encoding_layer, target=P_layer, w=torch.eye(P_layer.n, encoding_layer.n), requires_grad=False)
@@ -112,74 +87,97 @@ layers_to_monitor = {
 #     monitors[name] = Monitor(layer, state_vars=['s'], time=num_steps * time_per_step)
 #     network.add_monitor(monitors[name], name=f'{name}_monitor')
 
+def current_value_callback(msg):
+    global current_angle
+    current_angle = msg.data
+    rospy.loginfo('Received current angle: %f', current_angle)
+
+# ROS初始化和发布器设置
+rospy.init_node('snn_output_node', anonymous=True)
+pub = rospy.Publisher('snn_output', Float64, queue_size=1)
+sub = rospy.Subscriber('/current_value', Float64, current_value_callback)
+
+prev_time = 0.0
+current_time = 0.0
+
+
+
+
 # 初始化输入
 current_angle = 0  # 初始角度
 target_angle = 15   # 目标角度
 input_layer.update_input(current_angle, target_angle)
 input_data = input_layer.s.clone()
 
-# 初始化控制器和动态模型
-pid_controller = PIDController(kp=Kp, ki=Ki, kd=Kd)
-snn_dynamics = MassSpringDamper(mass=5, damping=2, stiffness=0.20, dt=0.1)
-pid_dynamics = MassSpringDamper(mass=5, damping=2, stiffness=0.20, dt=0.1)
 
 # 仿真参数
-num_steps = 600
+num_steps = 35000
 time_per_step = 1
-dt = 0.1#time_per_step/1000
+
 snn_angles = [current_angle]
-pid_angles = [current_angle]
+
 input_data = input_layer.s.clone().unsqueeze(0).repeat(time_per_step, 1, 1)
 for name, layer in layers_to_monitor.items():
     monitors[name] = Monitor(layer, state_vars=['s'], time=num_steps*time_per_step)
     network.add_monitor(monitors[name], name=f'{name}_monitor')
 
-try:
-    for step in range(num_steps):
-        print(f"Simulation step {step + 1}/{num_steps}")
 
-        # SNN 控制器运行
-        encoding_layer.use_indices = True
-        # 获取 InputLayer 的索引
-        current_idx, target_idx = input_layer.last_indices
+clock_pub = rospy.Publisher('/clock', Clock, queue_size=100)
 
-        # 将索引传递给 EncodingLayer
-        encoding_layer.y_index = current_idx
-        encoding_layer.r_index = target_idx
-        network.run(inputs={'input': input_data}, time=time_per_step)
+rate = rospy.Rate(100)  # 10 Hz 更新频率
+start_time = time.time()  # 记录启动时间
 
-        # 获取 SNN 输出
-        output_spikes = output_layer.s
-        snn_active_neuron_index = torch.argmax(output_spikes).item()
-        snn_output_value = snn_active_neuron_index * (80 / (num_neurons-1)) - 40
-        print(f"called Value: {snn_active_neuron_index},  snn_output_value: {snn_output_value}")
+while not rospy.is_shutdown():
+    elapsed_time = time.time() - start_time  # 计算当前时间
+    clock_msg = Clock()
+    clock_msg.clock.secs = int(elapsed_time)  # 秒部分
+    clock_msg.clock.nsecs = int((elapsed_time - int(elapsed_time)) * 1e9)  # 纳秒部分
+    clock_pub.publish(clock_msg)  # 发布消息
+    
 
-        # 使用动态模型更新 SNN 的角度
-        current_angle = snn_dynamics.step(snn_output_value)
-        snn_angles.append(current_angle)
+    # 计算动态时间步长
+    prev_time = current_time
+    current_time = elapsed_time
+    dt = current_time - prev_time
+    if dt <= 0:
+        continue  # 忽略无效的时间增量
 
-        # PID 控制器运行
-        if step >= 0:
-            pid_output = pid_controller.compute(current_angle=pid_angles[-1], target_angle=target_angle,dt = dt)
-            pid_current_angle = pid_dynamics.step(pid_output)
-            print(f"called pid_current_angle Value: {pid_output}")
 
-        else:
-            pid_current_angle = pid_angles[-1]
+        
 
-        pid_angles.append(pid_current_angle)
+    # SNN 控制器运行
+    encoding_layer.use_indices = True
+    # 获取 InputLayer 的索引
+    current_idx, target_idx = input_layer.last_indices
 
-        # 更新输入
-        print("TEST INPUT main:", current_angle)
-        print("TEST INPUT v:", P_layer.positive)
-        input_layer.update_input(current_angle, target_angle)
-        # input_data = input_layer.s.clone()
-        input_data = input_layer.s.clone().unsqueeze(0).repeat(time_per_step, 1, 1)
-        print("TEST INPUT main:", input_data)
-        print(f"SNN Current Angle: {current_angle:.2f}, PID Current Angle: {pid_current_angle:.2f}")
-except RuntimeError as e:
-    print("RuntimeError encountered:", e)
+    # 将索引传递给 EncodingLayer
+    encoding_layer.y_index = current_idx
+    encoding_layer.r_index = target_idx
+    network.run(inputs={'input': input_data}, time=1)
 
+    # 获取 SNN 输出
+    output_spikes = output_layer.s
+    snn_active_neuron_index = torch.argmax(output_spikes).item()
+    snn_output_value = snn_active_neuron_index * (80 / (num_neurons-1)) - 40
+    print(f"called Value: {snn_active_neuron_index},  snn_output_value: {snn_output_value}")
+    pub.publish(Float64(snn_output_value))
+
+
+    # 使用动态模型更新 SNN 的角度
+    current_angle = current_angle
+    snn_angles.append(current_angle)
+
+
+    # 更新输入
+    print("TEST INPUT main:", current_angle)
+    print("TEST INPUT v:", P_layer.positive)
+    input_layer.update_input(current_angle, target_angle)
+    # input_data = input_layer.s.clone()
+    input_data = input_layer.s.clone().unsqueeze(0).repeat(time_per_step, 1, 1)
+    print("TEST INPUT main:", input_data)
+            
+   
+    rate.sleep()
 
 # 绘制尖峰活动
 def plot_spiking_activity(monitors):
@@ -226,8 +224,7 @@ snn_x = [i * 10 for i in range(num_steps + 1)]
 # 绘制对比曲线
 plt.figure(figsize=(10, 6))
 plt.plot(snn_x, snn_angles, label='SNN Controller', linestyle='-', marker='o')
-# plt.plot(snn_x, pid_angles, label='PID Controller', linestyle='--', marker='x')
-# 绘图
+
 
 plt.plot(matlab_iterations, values, label='matlab Controller', linestyle='-', marker='x')
 plt.plot(matlab_iterations01, values01, label='matlab 01 Controller', linestyle='-', marker='o')

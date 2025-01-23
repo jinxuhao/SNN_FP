@@ -193,7 +193,7 @@ import torch
 from bindsnet.network.nodes import Nodes
 
 class IntegrationLayer(Nodes):
-    def __init__(self, num_neurons=63, scale_factor=10.0):
+    def __init__(self, num_neurons=63, scale_factor=1.0):
         """
         积分层，直接通过误差信号更新位置，模拟 PID 的 I 部分。
         :param num_neurons: I 层的神经元数量。
