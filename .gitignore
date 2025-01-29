@@ -8,3 +8,11 @@ logs/
 .vscode/
 
 src/bindsnet/
+src/universal_robot/
+src/pinocchio/
+src/ciii_1dof_vtol
+pycryptodome-3.21.0
+
+network_state.pth
+pycryptodome-3.21.0-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+pycryptodome-3.21.0.tar.gz

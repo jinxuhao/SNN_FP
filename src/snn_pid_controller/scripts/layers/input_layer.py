@@ -3,7 +3,7 @@ import numpy as np
 from bindsnet.network.nodes import Nodes
 
 class InputLayer(Nodes):
-    def __init__(self, num_neurons, angle_range=(-40, 40), setpoint_range=(-40, 40), angular_velocity_range=(-80, 80)):
+    def __init__(self, num_neurons, angle_range=(-10, 10), setpoint_range=(-10, 10), angular_velocity_range=(-80, 80)):
         super(InputLayer, self).__init__(n=num_neurons, shape=(1, num_neurons))
         self.num_neurons = num_neurons
         self.angle_range = angle_range

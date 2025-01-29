@@ -1,0 +1,16 @@
+python open_pybullet_env.py
+python /workspace/src/snn_pid_controller/scripts/open_pybullet_env.py
+
+3.9和ros默认冲突
+python3.9 -m pip install pycryptodomex
+当前系统版本的 pycryptodomex 可能过旧，无法与 Python 3.9 兼容。可以强制使用 pip 安装用户级的最新版本：
+python3.9 -m pip install --upgrade --user pycryptodomex
+
+pinocchio 下包安装
+
+bindsnet 依赖的 PyTorch 模块试图导入 torch._six，但这个模块在较新的 PyTorch 版本中已经被移除。这是因为 torch._six 是 PyTorch 内部的一个私有模块，在 PyTorch 1.9.0 及更高版本中被移除或重构。
+from torch._six import container_abcs, string_classes, int_classes
+代替为
+import collections.abc as container_abcs
+string_classes = (str,)
+int_classes = (int,)
