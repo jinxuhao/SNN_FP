@@ -14,7 +14,7 @@ from layers.I_layer import IIntermediateLayer
 from layers.D_layer import DIntermediateLayer
 import pandas as pd 
 
-# 初始化 PyBullet 仿真
+# Initialize PyBullet simulation
 def initialize_robot(urdf_path, gui=True, gravity=-9.81, base_position=(0, 0, 0)):
     physics_client = p.connect(p.GUI if gui else p.DIRECT)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -46,7 +46,7 @@ def get_joint_states(robot_id, movable_joints):
     dq = np.array([state[1] for state in joint_states])  # 关节速度
     return q, dq
 
-# PID 控制器
+# PID controller
 def pid_controller(target, current, kp, ki, kd, integral, prev_error, dt):
     error = target - current
     integral += error * dt
@@ -56,7 +56,7 @@ def pid_controller(target, current, kp, ki, kd, integral, prev_error, dt):
     # output = max(min(output, 10), -10)
     return output, integral, error
 
-# 初始化 SNN
+# Initialize SNN
 def initialize_snn(num_neurons, kp, ki, kd):
     network = Network()
 
@@ -82,7 +82,7 @@ def initialize_snn(num_neurons, kp, ki, kd):
             weight_matrix[i, i] = diagonal_value
         return weight_matrix
 
-     # 创建连接并添加到网络中
+    # Create connections and add them to the network
     input_to_encoding = Connection(
         source=input_layer,
         target=encoding_layer,
@@ -132,7 +132,7 @@ def initialize_snn(num_neurons, kp, ki, kd):
         requires_grad=False
     )
 
-    # 添加连接到网络中
+    # Add connections to the network
     network.add_connection(input_to_encoding, source='input', target='encoding')
     network.add_connection(encoding_to_integration, source='encoding', target='integration')
     network.add_connection(encoding_to_p, source='encoding', target='p_intermediate')
@@ -145,62 +145,62 @@ def initialize_snn(num_neurons, kp, ki, kd):
 
     return network, input_layer, encoding_layer,output_layer
 
-# 仿真和 SNN 集成主函数
+# Main function for simulation and SNN integration
 def main():
-    # 初始化 PyBullet 仿真
+    # Initialize PyBullet simulation
     urdf_path = "/workspace/src/universal_robot/ur_description/urdf/ur3.urdf"
     physics_client, robot1_id = initialize_robot(urdf_path, gui=True, base_position=(0, 0, 0))
     _, robot2_id = initialize_robot(urdf_path, gui=False, base_position=(1, 0, 0))
     movable_joints1 = get_movable_joints(robot1_id)
     movable_joints2 = get_movable_joints(robot2_id)
 
-    # 初始化 SNN
+    # Initialize SNN
     num_neurons = 3862+1
     kp, ki, kd = 3.750, 10/100, 0.5*100
     # kp, ki, kd = 3.75, 10, 0.5
     network, input_layer, encoding_layer, output_layer = initialize_snn(num_neurons, kp, ki, kd)
 
-    # 仿真参数
+    # Simulation parameters
     time_step = 0.01
     simulation_time = 30
     steps = int(simulation_time / time_step)
 
-    # 数据存储
+    # Data storage
     times = []
     joint_angles1 = []
     joint_angles2 = []
     velocities1_data = []
     velocities2_data = []
 
-    # PID 参数
+    # PID parameters
     kp_pid, ki_pid, kd_pid = 3.750 ,10, 0.5
     integral1 = np.zeros(len(movable_joints1))
     prev_error1 = np.zeros(len(movable_joints1))
 
-    # 初始值
+    # Initial values
     current_angle = 0.0
     # target_angle =  45 * (np.pi / 180)
     target_angles = [45* (np.pi / 180), 0 * (np.pi / 180), -45 * (np.pi / 180)]  # 3个目标值
     current_target_index = 0  # 当前目标索引
     target_angle = target_angles[current_target_index]  # 初始目标值
     
-    # 仿真循环
+    # Simulation loop
     for step in range(steps):
 
         current_time = step * time_step
-        # 每10秒更新目标值
+        # Update target every 10 seconds
         if current_time >= (current_target_index + 1) * 10 and current_target_index < len(target_angles) - 1:
             current_target_index += 1
             target_angle = target_angles[current_target_index]
             print(f"Time {current_time:.2f}s: Updated target to {target_angle:.2f} rad")
 
-        # 获取机器人状态
+        # Get robot states
         q1, dq1 = get_joint_states(robot1_id, movable_joints1)
         q2, dq2 = get_joint_states(robot2_id, movable_joints2)
         joint_angles1.append(q1)
         joint_angles2.append(q2)
 
-        # 计算 PID 控制
+        # Compute PID control
         velocities1 = []
         for i in range(len(movable_joints1)):
             velocity, integral1[i], prev_error1[i] = pid_controller(
@@ -208,51 +208,47 @@ def main():
             )
             velocities1.append(velocity)
 
-
         encoding_layer.use_indices = True
-        # 获取 InputLayer 的索引
+        # Get indices from InputLayer
         current_idx, target_idx = input_layer.last_indices
 
-        # 将索引传递给 EncodingLayer
+        # Pass indices to EncodingLayer
         encoding_layer.y_index = current_idx
         encoding_layer.r_index = target_idx
 
-        # 更新 SNN 输入
+        # Update SNN input
         input_layer.update_input(q2[0], target_angle)
         network.run(inputs={'input': input_layer.s}, time=1)
 
-        # 计算 SNN 控制
+        # Compute SNN control
         output_spikes = output_layer.s
         snn_active_neuron_index = torch.argmax(output_spikes).item()
         snn_velocity = snn_active_neuron_index * (40 / (num_neurons - 1)) - 20
         velocities2 = [snn_velocity] * len(movable_joints2)
 
-        # 应用速度控制
+        # Apply velocity control
         apply_joint_velocities(robot1_id, movable_joints1, velocities1)
         apply_joint_velocities(robot2_id, movable_joints2, velocities2)
 
-        # 存储速度数据
+        # Store velocity data
         velocities1_data.append(velocities1)
         velocities2_data.append(velocities2)
 
-        # 仿真步进
+        # Step simulation
         p.stepSimulation()
         times.append(step * time_step)
 
-    # 仿真结束
+
+    # End simulation
     p.disconnect()
 
-    # 转换数据为 NumPy 数组
-    joint_angles1 = np.array(joint_angles1)
-    joint_angles2 = np.array(joint_angles2)
-
-    # 转换数据为 NumPy 数组
+    # Convert data to NumPy arrays
     joint_angles1 = np.array(joint_angles1)
     joint_angles2 = np.array(joint_angles2)
     velocities1_data = np.array(velocities1_data)
     velocities2_data = np.array(velocities2_data)
 
-    # 存储数据到 CSV 文件
+    # Store into CSV
     data_dict = {
         "Time (s)": times
     }
@@ -267,7 +263,7 @@ def main():
     df.to_csv("joint_control_results.csv", index=False)
     print("CSV file 'joint_control_results.csv' has been saved.")
 
-    # 绘图：关节角度和速度
+    # Plot joint angles and velocities
     plt.figure()
     for i in range(joint_angles1.shape[1]):
         plt.plot(times, joint_angles1[:, i], label=f"PID Joint {i} Angle")

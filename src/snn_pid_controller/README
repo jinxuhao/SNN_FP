@@ -1,16 +1,82 @@
-python open_pybullet_env.py
-python /workspace/src/snn_pid_controller/scripts/open_pybullet_env.py
+# SNN-PID Experiments
 
-3.9和ros默认冲突
+## Overview
+This project explores Spiking Neural Network-based PID control in different simulation environments, including PyBullet and MATLAB.
+
+## Experiment Descriptions
+
+### 1. Three Target Points Experiment in PyBullet using UR3
+- **Script:** `snn_pid_velocity_3_step.py`
+- **Description:** This experiment simulates a UR3 robot in PyBullet reaching three predefined target points using an SNN-PID velocity controller.
+- **Run in VS Code**
+   ```sh
+   /usr/bin/python /workspace/src/snn_pid_controller/scripts/snn_pid_velocity_3_step.py
+   ```
+
+### 2. Obstacle-Avoidance Experiment in PyBullet using UR3
+- **Script:** `snn_pid_velocity_obstacle.py`
+- **Description:** This experiment extends the previous setup by introducing obstacles along the motion trajectory. The UR3 robot navigates while avoiding obstacles.
+- **Run in VS Code**
+   ```sh
+   /usr/bin/python /workspace/src/snn_pid_controller/scripts/snn_pid_velocity_obstacle.py
+   ```
+
+### 3. Mass-Spring-Damper Model in MATLAB
+This experiment tests the SNN-PID controller on a mass-spring-damper system simulated in MATLAB.
+
+#### Steps to Run:
+1. **Start ROS Core in VS Code**
+   ```sh
+   roscore
+   ```
+2. **Initialize ROS in MATLAB Terminal**
+   ```matlab
+   rosinit('http://192.168.1.101:11311')
+   ```
+3. **Run ROS Node in VS Code**
+   ```sh
+   /usr/bin/python /workspace/src/snn_pid_controller/scripts/ros_snn_matlab_PID.py
+   ```
+4. **Open and Run the Simulink Model**
+   - Open `PID_mass_spring_damper_system.slx` in MATLAB
+   - Click **Run** to start the simulation
+
+> **Note:** Due to the frequency mismatch problem between ROS and MATLAB topics, adjust the **sample time** in Simulink Configuration settings accordingly.
+
+## Dependencies
+- ROS
+- PyBullet
+- MATLAB with Simulink
+- Python 3
+
+
+## Installation Issues and Fixes
+
+### Python 3.9 and ROS Conflict
+Python 3.9 may have compatibility issues with ROS. To install `pycryptodomex` for Python 3.9:
+```sh
 python3.9 -m pip install pycryptodomex
-当前系统版本的 pycryptodomex 可能过旧，无法与 Python 3.9 兼容。可以强制使用 pip 安装用户级的最新版本：
+```
+If the system version of `pycryptodomex` is outdated and incompatible with Python 3.9, force the installation of the latest user-level version:
+```sh
 python3.9 -m pip install --upgrade --user pycryptodomex
+```
 
-pinocchio 下包安装
+### Pinocchio Package Installation
+Ensure that all dependencies for `pinocchio` are correctly installed.
 
-bindsnet 依赖的 PyTorch 模块试图导入 torch._six，但这个模块在较新的 PyTorch 版本中已经被移除。这是因为 torch._six 是 PyTorch 内部的一个私有模块，在 PyTorch 1.9.0 及更高版本中被移除或重构。
+### Fixing BindsNET's PyTorch Dependency Issue
+BindsNET relies on an outdated PyTorch module `torch._six`, which was removed in PyTorch 1.9.0 and later. To fix this, replace the following import:
+```python
 from torch._six import container_abcs, string_classes, int_classes
-代替为
+```
+with:
+```python
 import collections.abc as container_abcs
 string_classes = (str,)
 int_classes = (int,)
+```
+
+## Contact
+For any questions or contributions, feel free to reach out.
+

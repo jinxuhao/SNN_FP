@@ -20,7 +20,7 @@ from rosgraph_msgs.msg import Clock
 from time import sleep
 import time
 
-# 工具函数：创建权重矩阵
+# Utility function: Create a weight matrix
 def create_weight_matrix(source_size, target_size, diagonal_value=1.0):
     weight_matrix = torch.zeros(target_size, source_size)
     for i in range(min(source_size, target_size)):
@@ -29,11 +29,11 @@ def create_weight_matrix(source_size, target_size, diagonal_value=1.0):
 
 
 
-# 初始化网络
+# Initialize network
 network = Network()
 
-# 初始化各层
-num_neurons = 1630+1#63*3##63*49
+# Initialize layers
+num_neurons = 3630+1#63*3##63*49
 input_layer = InputLayer(num_neurons=num_neurons)
 encoding_layer = EncodingLayer(num_neurons=num_neurons)
 integration_layer = IntegrationLayer(num_neurons=num_neurons)
@@ -42,7 +42,7 @@ P_layer = PIntermediateLayer(num_neurons=num_neurons)
 I_layer = IIntermediateLayer(num_neurons=num_neurons)
 D_layer = DIntermediateLayer(num_neurons=num_neurons)
 
-# 添加层到网络
+# Add layers to the network
 network.add_layer(input_layer, name='input')
 network.add_layer(encoding_layer, name='encoding')
 network.add_layer(integration_layer, name='integration')
@@ -51,8 +51,8 @@ network.add_layer(P_layer, name='p_intermediate')
 network.add_layer(I_layer, name='i_intermediate')
 network.add_layer(D_layer, name='d_intermediate')
 
-# 创建连接
-Kp, Ki, Kd = 1.72, 0.238*5/50, 0.2*0#1.72, 0.238*0.001, 2.654/0.01  #1.72, 0.238, 0 #PI 0.5514, 0.0467, 2.654         0.238*2*0.004
+# Create connections
+Kp, Ki, Kd = 1.72, 0.238*1/50, 0.2*50#1.72, 0.238*0.001, 2.654/0.01  #1.72, 0.238, 0 #PI 0.5514, 0.0467, 2.654         0.238*2*0.004
 input_to_encoding = Connection(source=input_layer, target=encoding_layer, w=torch.eye(encoding_layer.n, input_layer.n), requires_grad=False)
 encoding_to_integration = Connection(source=encoding_layer, target=integration_layer, w=torch.eye(integration_layer.n, encoding_layer.n), requires_grad=False)
 encoding_to_p = Connection(source=encoding_layer, target=P_layer, w=torch.eye(P_layer.n, encoding_layer.n), requires_grad=False)
@@ -62,7 +62,7 @@ p_to_output = Connection(source=P_layer, target=output_layer, w=create_weight_ma
 i_to_output = Connection(source=I_layer, target=output_layer, w=create_weight_matrix(I_layer.n, output_layer.n, Ki), requires_grad=False)
 d_to_output = Connection(source=D_layer, target=output_layer, w=create_weight_matrix(D_layer.n, output_layer.n, Kd), requires_grad=False)
 
-# 添加连接到网络
+# Add connections to the network
 network.add_connection(input_to_encoding, source='input', target='encoding')
 network.add_connection(encoding_to_integration, source='encoding', target='integration')
 network.add_connection(encoding_to_p, source='encoding', target='p_intermediate')
@@ -72,7 +72,7 @@ network.add_connection(p_to_output, source='p_intermediate', target='output')
 network.add_connection(i_to_output, source='i_intermediate', target='output')
 network.add_connection(d_to_output, source='d_intermediate', target='output')
 
-# 初始化监视器
+# Initialize monitors
 monitors = {}
 layers_to_monitor = {
     'input': input_layer,
@@ -83,16 +83,14 @@ layers_to_monitor = {
     'd_intermediate': D_layer,
     'output': output_layer
 }
-# for name, layer in layers_to_monitor.items():
-#     monitors[name] = Monitor(layer, state_vars=['s'], time=60)
-#     network.add_monitor(monitors[name], name=f'{name}_monitor')
+
 
 def current_value_callback(msg):
     global current_angle
     current_angle = msg.data
     rospy.loginfo('Received current angle: %f', current_angle)
 
-# ROS初始化和发布器设置
+# ROS initialization and publisher setup
 rospy.init_node('snn_output_node', anonymous=True)
 pub = rospy.Publisher('snn_output', Float64, queue_size=1)
 sub = rospy.Subscriber('/current_value', Float64, current_value_callback)
@@ -101,16 +99,14 @@ prev_time = 0.0
 current_time = 0.0
 
 
-
-
-# 初始化输入
-current_angle = 0  # 初始角度
-target_angle = 5   # 目标角度
+# Initialize input
+current_angle = 0  # Initial angle
+target_angle = 5   # Target angle
 input_layer.update_input(current_angle, target_angle)
 input_data = input_layer.s.clone()
 
 
-# 仿真参数
+# Simulation parameters
 num_steps = 60
 time_per_step = 1
 
@@ -124,38 +120,35 @@ for name, layer in layers_to_monitor.items():
 
 clock_pub = rospy.Publisher('/clock', Clock, queue_size=100)
 
-rate = rospy.Rate(50)  # 10 Hz 更新频率
-start_time = time.time()  # 记录启动时间
+rate = rospy.Rate(50)  # 10 Hz update rate
+start_time = time.time()   # Record start time
 
 while not rospy.is_shutdown():
-    elapsed_time = time.time() - start_time  # 计算当前时间
+    elapsed_time = time.time() - start_time  # Calculate current time
     clock_msg = Clock()
-    clock_msg.clock.secs = int(elapsed_time)  # 秒部分
-    clock_msg.clock.nsecs = int((elapsed_time - int(elapsed_time)) * 1e9)  # 纳秒部分
-    clock_pub.publish(clock_msg)  # 发布消息
-    
+    clock_msg.clock.secs = int(elapsed_time)  # Seconds part
+    clock_msg.clock.nsecs = int((elapsed_time - int(elapsed_time)) * 1e9)  # Nanoseconds part
+    clock_pub.publish(clock_msg)  # Publish message
 
-    # 计算动态时间步长
+
+    # Compute dynamic time step
     prev_time = current_time
     current_time = elapsed_time
     dt = current_time - prev_time
     if dt <= 0:
-        continue  # 忽略无效的时间增量
+        continue  
 
-
-        
-
-    # SNN 控制器运行
+    # Run SNN controller
     encoding_layer.use_indices = True
-    # 获取 InputLayer 的索引
+    # Get indices from InputLayer
     current_idx, target_idx = input_layer.last_indices
 
-    # 将索引传递给 EncodingLayer
+    # Pass indices to EncodingLayer
     encoding_layer.y_index = current_idx
     encoding_layer.r_index = target_idx
     network.run(inputs={'input': input_data}, time=1)
 
-    # 获取 SNN 输出
+    # Get SNN output
     output_spikes = output_layer.s
     snn_active_neuron_index = torch.argmax(output_spikes).item()
     snn_output_value = snn_active_neuron_index * (40 / (num_neurons-1)) - 20
@@ -163,12 +156,12 @@ while not rospy.is_shutdown():
     pub.publish(Float64(snn_output_value))
 
 
-    # 使用动态模型更新 SNN 的角度
+    # Update SNN angle using dynamic model
     current_angle = current_angle
     snn_angles.append(current_angle)
 
 
-    # 更新输入
+    # Update input
     print("TEST INPUT main:", current_angle)
     print("TEST INPUT v:", P_layer.positive)
     input_layer.update_input(current_angle, target_angle)
@@ -179,7 +172,7 @@ while not rospy.is_shutdown():
    
     rate.sleep()
 
-# 绘制尖峰活动
+# Plot spiking activity
 def plot_spiking_activity(monitors):
     num_layers = len(monitors)
     cols = 2
@@ -206,7 +199,7 @@ def plot_spiking_activity(monitors):
 
 
 
-# 加载 .mat 文件
+# load .mat 
 data = loadmat('src/snn_pid_controller/scripts/matlab/simulation_results_simple001.mat/simulation_results_simple001.mat')
 data01 = loadmat('src/snn_pid_controller/scripts/matlab/simulation_results_simple01.mat/simulation_results_simple01.mat')
 
@@ -221,7 +214,7 @@ matlab_iterations01  = [int(t / 0.01) for t in time01]
 
 snn_x = [i * 10 for i in range(num_steps + 1)]
 
-# 绘制对比曲线
+# Plot curves
 plt.figure(figsize=(10, 6))
 plt.plot(snn_x, snn_angles, label='SNN Controller', linestyle='-', marker='o')
 
@@ -237,6 +230,6 @@ plt.grid(True)
 
 plt.show(block=True)
 
-# 绘制尖峰活动
+# Plot spiking activity
 plot_spiking_activity(monitors)
 print(f"Sampling time (dt): {network.dt} ms")
