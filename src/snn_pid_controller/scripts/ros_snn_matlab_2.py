@@ -30,7 +30,7 @@ def create_weight_matrix(source_size, target_size, diagonal_value=1.0):
 network = Network()
 
 # 初始化各层
-num_neurons = 6800+1#63*3##63*49
+num_neurons = 420+1#63*3##63*49
 input_layer = InputLayer(num_neurons=num_neurons)
 encoding_layer = EncodingLayer(num_neurons=num_neurons)
 integration_layer = IntegrationLayer(num_neurons=num_neurons)
@@ -49,7 +49,7 @@ network.add_layer(I_layer, name='i_intermediate')
 network.add_layer(D_layer, name='d_intermediate')
 
 # 创建连接
-Kp, Ki, Kd = 1.72, 0.238/10, 0.2*10  #1.72, 0.238, 0 #PI 0.5514, 0.0467, 2.654
+Kp, Ki, Kd = 1.72, 0.238*40/50, 0.8*0.0  #1.72, 0.238, 0 #PI 0.5514, 0.0467, 2.654
 input_to_encoding = Connection(source=input_layer, target=encoding_layer, w=torch.eye(encoding_layer.n, input_layer.n), requires_grad=False)
 encoding_to_integration = Connection(source=encoding_layer, target=integration_layer, w=torch.eye(integration_layer.n, encoding_layer.n), requires_grad=False)
 encoding_to_p = Connection(source=encoding_layer, target=P_layer, w=torch.eye(P_layer.n, encoding_layer.n), requires_grad=False)
@@ -93,7 +93,7 @@ def current_value_callback(msg):
 rospy.init_node('snn_output_node', anonymous=True)
 
 # 运行网络并发布输出
-rate = rospy.Rate(1000)
+rate = rospy.Rate(50)
 
 pub = rospy.Publisher('snn_output', Float64, queue_size=1)
 sub = rospy.Subscriber('/current_value', Float64, current_value_callback)
@@ -110,7 +110,7 @@ input_data = input_layer.s.clone()
 
 
 # 仿真参数
-num_steps = 3000
+num_steps = 3500
 time_per_step = 1
 dt = 0.1#time_per_step/1000
 snn_angles = [current_angle]
@@ -139,7 +139,7 @@ try:
         # 获取 SNN 输出
         output_spikes = output_layer.s
         snn_active_neuron_index = torch.argmax(output_spikes).item()
-        snn_output_value = snn_active_neuron_index * (160/ (num_neurons-1)) - 80
+        snn_output_value = snn_active_neuron_index * (40/ (num_neurons-1)) - 20
         print(f"called Value: {snn_active_neuron_index},  snn_output_value: {snn_output_value}")
         pub.publish(Float64(snn_output_value))
 
@@ -201,7 +201,7 @@ matlab_steps = len(time)  # MATLAB 时间步数
 matlab_iterations = [int(t / 0.01) for t in time]  # 转换为迭代次数
 matlab_iterations01  = [int(t / 0.01) for t in time01]
 
-snn_x = [i * 10 for i in range(num_steps + 1)]
+snn_x = [i * 1 for i in range(num_steps + 1)]
 
 # 绘制对比曲线
 plt.figure(figsize=(10, 6))

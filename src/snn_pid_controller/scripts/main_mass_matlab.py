@@ -124,7 +124,7 @@ snn_dynamics = MassSpringDamper(mass=5, damping=2, stiffness=0.20, dt=0.1)
 pid_dynamics = MassSpringDamper(mass=5, damping=2, stiffness=0.20, dt=0.1)
 
 # 仿真参数
-num_steps = 600
+num_steps = 6000
 time_per_step = 1
 dt = 0.1#time_per_step/1000
 snn_angles = [current_angle]

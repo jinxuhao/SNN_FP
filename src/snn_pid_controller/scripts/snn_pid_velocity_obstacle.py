@@ -12,7 +12,6 @@ from layers.output_layer import ComplexOutputLayer
 from layers.P_layer import PIntermediateLayer
 from layers.I_layer import IIntermediateLayer
 from layers.D_layer import DIntermediateLayer
-import pandas as pd 
 
 # 初始化 PyBullet 仿真
 def initialize_robot(urdf_path, gui=True, gravity=-9.81, base_position=(0, 0, 0)):
@@ -52,9 +51,25 @@ def pid_controller(target, current, kp, ki, kd, integral, prev_error, dt):
     integral += error * dt
     derivative = (error - prev_error) / dt
     output = kp * error + ki * integral + kd * derivative
-    integral = max(min(integral, 20), -20)
-    # output = max(min(output, 10), -10)
     return output, integral, error
+
+def add_obstacle(position, size=(0.1, 0.1, 0.1), mass=0):
+    collision_shape = p.createCollisionShape(p.GEOM_BOX, halfExtents=size)
+    visual_shape = p.createVisualShape(p.GEOM_BOX, halfExtents=size, rgbaColor=[1, 0, 0, 1])  # 红色
+    obstacle_id = p.createMultiBody(
+        baseMass=mass, 
+        baseCollisionShapeIndex=collision_shape, 
+        baseVisualShapeIndex=visual_shape, 
+        basePosition=position
+    )
+    return obstacle_id
+
+def remove_obstacle(obstacle_id):
+    """移除障碍物"""
+    if obstacle_id is not None:
+        p.removeBody(obstacle_id)
+        return None  # 确保调用后不会重复移除
+    return obstacle_id
 
 # 初始化 SNN
 def initialize_snn(num_neurons, kp, ki, kd):
@@ -147,22 +162,40 @@ def initialize_snn(num_neurons, kp, ki, kd):
 
 # 仿真和 SNN 集成主函数
 def main():
+
     # 初始化 PyBullet 仿真
     urdf_path = "/workspace/src/universal_robot/ur_description/urdf/ur3.urdf"
     physics_client, robot1_id = initialize_robot(urdf_path, gui=True, base_position=(0, 0, 0))
     _, robot2_id = initialize_robot(urdf_path, gui=False, base_position=(1, 0, 0))
+
+
+    # 初始化障碍物变量
+    obstacle_id_1 = None
+    obstacle_id_2 = None
+
+
+    obstacle_position = (0.3, -0.35, 0.2)  # 障碍物的位置
+    obstacle_id_1 = add_obstacle(obstacle_position)
+
+    obstacle_position_2 = (1.3, -0.35, 0.2)  # 障碍物的位置
+    obstacle_id_2 = add_obstacle(obstacle_position_2)
+
+
+    obstacle_start_time = 0.0  # 5秒后添加障碍物
+    obstacle_end_time = 3.0   # 10秒后移除障碍物
+
+
     movable_joints1 = get_movable_joints(robot1_id)
     movable_joints2 = get_movable_joints(robot2_id)
 
     # 初始化 SNN
     num_neurons = 3862+1
-    kp, ki, kd = 3.750, 10/100, 0.5*100
-    # kp, ki, kd = 3.75, 10, 0.5
+    kp, ki, kd = 3.75, 10/100, 0.5*100
     network, input_layer, encoding_layer, output_layer = initialize_snn(num_neurons, kp, ki, kd)
 
     # 仿真参数
     time_step = 0.01
-    simulation_time = 30
+    simulation_time = 10
     steps = int(simulation_time / time_step)
 
     # 数据存储
@@ -173,26 +206,17 @@ def main():
     velocities2_data = []
 
     # PID 参数
-    kp_pid, ki_pid, kd_pid = 3.750 ,10, 0.5
+    kp_pid, ki_pid, kd_pid = 3.75, 10, 0.5
     integral1 = np.zeros(len(movable_joints1))
     prev_error1 = np.zeros(len(movable_joints1))
 
     # 初始值
     current_angle = 0.0
-    # target_angle =  45 * (np.pi / 180)
-    target_angles = [45* (np.pi / 180), 0 * (np.pi / 180), -45 * (np.pi / 180)]  # 3个目标值
-    current_target_index = 0  # 当前目标索引
-    target_angle = target_angles[current_target_index]  # 初始目标值
+    target_angle =  -45 * (np.pi / 180)
     
     # 仿真循环
     for step in range(steps):
-
         current_time = step * time_step
-        # 每10秒更新目标值
-        if current_time >= (current_target_index + 1) * 10 and current_target_index < len(target_angles) - 1:
-            current_target_index += 1
-            target_angle = target_angles[current_target_index]
-            print(f"Time {current_time:.2f}s: Updated target to {target_angle:.2f} rad")
 
         # 获取机器人状态
         q1, dq1 = get_joint_states(robot1_id, movable_joints1)
@@ -235,9 +259,18 @@ def main():
         velocities1_data.append(velocities1)
         velocities2_data.append(velocities2)
 
+# 计时并移除障碍物
+        if current_time >= obstacle_end_time:
+            obstacle_id_1 = remove_obstacle(obstacle_id_1)
+            print(f"Obstacle 1 removed at time {current_time:.2f}s")
+
+        if current_time >= obstacle_end_time:
+            obstacle_id_2 = remove_obstacle(obstacle_id_2)
+            print(f"Obstacle 2 removed at time {current_time:.2f}s")
+
         # 仿真步进
         p.stepSimulation()
-        times.append(step * time_step)
+        times.append(current_time)
 
     # 仿真结束
     p.disconnect()
@@ -245,27 +278,6 @@ def main():
     # 转换数据为 NumPy 数组
     joint_angles1 = np.array(joint_angles1)
     joint_angles2 = np.array(joint_angles2)
-
-    # 转换数据为 NumPy 数组
-    joint_angles1 = np.array(joint_angles1)
-    joint_angles2 = np.array(joint_angles2)
-    velocities1_data = np.array(velocities1_data)
-    velocities2_data = np.array(velocities2_data)
-
-    # 存储数据到 CSV 文件
-    data_dict = {
-        "Time (s)": times
-    }
-    
-    for i in range(joint_angles1.shape[1]):
-        data_dict[f"PID Joint {i} Angle (rad)"] = joint_angles1[:, i]
-        data_dict[f"SNN Joint {i} Angle (rad)"] = joint_angles2[:, i]
-        data_dict[f"PID Joint {i} Velocity (rad/s)"] = velocities1_data[:, i]
-        data_dict[f"SNN Joint {i} Velocity (rad/s)"] = velocities2_data[:, i]
-
-    df = pd.DataFrame(data_dict)
-    df.to_csv("joint_control_results.csv", index=False)
-    print("CSV file 'joint_control_results.csv' has been saved.")
 
     # 绘图：关节角度和速度
     plt.figure()
