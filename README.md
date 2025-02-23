@@ -4,7 +4,7 @@
 This project explores Spiking Neural Network-based PID control in different simulation environments, including PyBullet and MATLAB.
 
 ## Experiment Descriptions
-
+The path to the executable file for the experiment: src/snn_pid_controller/scripts
 ### 1. Three Target Points Experiment in PyBullet using UR3
 - **Script:** `snn_pid_velocity_3_step.py`
 - **Description:** This experiment simulates a UR3 robot in PyBullet reaching three predefined target points using an SNN-PID velocity controller.
